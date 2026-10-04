@@ -6,6 +6,7 @@ import { ownStoreId } from "@/server/policies";
 import { getSettings } from "@/server/settings";
 import { formatRupiah } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SubmitStoreBtn } from "@/components/submit-store-btn";
 
 const STORE_STATUS_TEXT: Record<string, string> = {
   DRAFT: "Tokomu masih berstatus draf.",
@@ -59,6 +60,12 @@ export default async function StoreDashboardPage() {
             <p className="font-medium">{STORE_STATUS_TEXT[store.status] ?? "Tokomu belum aktif."}</p>
             <p className="mt-1">Selama belum aktif, barangmu tidak tampil di pencarian dan tidak bisa dipesan.</p>
             {store.rejectionReason && <p className="mt-1">Alasan: {store.rejectionReason}</p>}
+            {(store.status === "DRAFT" || store.status === "REJECTED") && (
+              <div className="mt-3 space-y-2">
+                <p>Lengkapi alamat, WhatsApp, dan rekening atau QRIS di Pengaturan Toko, lalu ajukan.</p>
+                <SubmitStoreBtn />
+              </div>
+            )}
           </Alert>
         )}
 

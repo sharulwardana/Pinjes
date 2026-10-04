@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ShoppingBag, Store } from "lucide-react";
 import { useRegister } from "@/features/auth/hooks";
 import { registerSchema, type RegisterInput } from "@/features/auth/schemas";
 import { Button } from "@/components/ui/button";
@@ -10,19 +11,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+const ACCOUNT_TYPES = [
+  { value: "renter", label: "Penyewa", icon: ShoppingBag },
+  { value: "owner", label: "Pemilik toko", icon: Store },
+] as const;
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="text-sm text-red-600">
+      {message}
+    </p>
+  );
+}
+
 export default function RegisterPage() {
   const registerMut = useRegister();
   const {
     register,
     handleSubmit,
-    control,
+    watch,
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: { accountType: "renter" },
   });
 
-  const accountType = useWatch({ control, name: "accountType" });
+  const accountType = watch("accountType");
 
   const onSubmit = (data: RegisterInput) => {
     registerMut.mutate(data);
@@ -33,56 +48,52 @@ export default function RegisterPage() {
       <Card className="mx-auto w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold">Daftar PinjeS</CardTitle>
-          <CardDescription>Mulai menyewa atau buka toko rentalmu hari ini.</CardDescription>
+          <CardDescription>Mulai menyewa atau daftarkan toko rentalmu.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Label
-                htmlFor="type-renter"
-                className={`flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-zinc-900 has-data-[state=checked]:border-zinc-900 ${accountType === "renter" ? "border-zinc-900 ring-1 ring-zinc-900 bg-zinc-50" : "border-zinc-200"
-                  } cursor-pointer`}
-              >
-                <input
-                  type="radio"
-                  id="type-renter"
-                  value="renter"
-                  className="sr-only"
-                  {...register("accountType")}
-                  disabled={registerMut.isPending}
-                />
-                <span className="mb-2 text-xl block">🛒</span>
-                <span className="text-sm font-semibold text-center block">Penyewa</span>
-              </Label>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <fieldset className="space-y-2">
+              <legend className="mb-2 text-sm font-medium text-zinc-900">Daftar sebagai</legend>
+              <div className="grid grid-cols-2 gap-4">
+                {ACCOUNT_TYPES.map(({ value, label, icon: Icon }) => (
+                  <label
+                    key={value}
+                    htmlFor={`type-${value}`}
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-400 has-[:checked]:border-accent has-[:checked]:bg-accent/5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent"
+                  >
+                    <input
+                      type="radio"
+                      id={`type-${value}`}
+                      value={value}
+                      className="sr-only"
+                      {...register("accountType")}
+                      disabled={registerMut.isPending}
+                    />
+                    <Icon className="h-6 w-6 text-zinc-700" aria-hidden />
+                    <span className="text-sm font-semibold">{label}</span>
+                  </label>
+                ))}
+              </div>
+              <FieldError message={errors.accountType?.message} />
+            </fieldset>
 
-              <Label
-                htmlFor="type-owner"
-                className={`flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-zinc-900 has-data-[state=checked]:border-zinc-900 ${accountType === "owner" ? "border-zinc-900 ring-1 ring-zinc-900 bg-zinc-50" : "border-zinc-200"
-                  } cursor-pointer`}
-              >
-                <input
-                  type="radio"
-                  id="type-owner"
-                  value="owner"
-                  className="sr-only"
-                  {...register("accountType")}
-                  disabled={registerMut.isPending}
-                />
-                <span className="mb-2 text-xl block">🏪</span>
-                <span className="text-sm font-semibold text-center block">Pemilik Toko</span>
-              </Label>
-            </div>
-            {errors.accountType && <p className="text-sm text-red-500">{errors.accountType.message}</p>}
+            {accountType === "owner" && (
+              <p className="rounded-lg bg-zinc-50 p-3 text-sm text-zinc-600">
+                Setelah mendaftar, lengkapi profil dan rekening tokomu di Pengaturan Toko, lalu top-up saldo deposit
+                supaya tokomu bisa menerima pesanan.
+              </p>
+            )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">Nama Lengkap</Label>
+              <Label htmlFor="name">Nama lengkap</Label>
               <Input
                 id="name"
+                autoComplete="name"
                 placeholder="Budi Santoso"
                 {...register("name")}
                 disabled={registerMut.isPending}
               />
-              {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+              <FieldError message={errors.name?.message} />
             </div>
 
             <div className="space-y-2">
@@ -90,11 +101,12 @@ export default function RegisterPage() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 placeholder="nama@email.com"
                 {...register("email")}
                 disabled={registerMut.isPending}
               />
-              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+              <FieldError message={errors.email?.message} />
             </div>
 
             <div className="space-y-2">
@@ -102,19 +114,20 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="new-password"
                 {...register("password")}
                 disabled={registerMut.isPending}
               />
-              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+              <FieldError message={errors.password?.message} />
             </div>
 
             <Button type="submit" className="w-full" disabled={registerMut.isPending}>
-              {registerMut.isPending ? "Memproses..." : "Daftar Sekarang"}
+              {registerMut.isPending ? "Memproses..." : "Daftar sekarang"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             Sudah punya akun?{" "}
-            <Link href="/login" className="font-semibold text-zinc-900 hover:underline">
+            <Link href="/login" className="font-semibold text-accent hover:underline">
               Masuk
             </Link>
           </div>

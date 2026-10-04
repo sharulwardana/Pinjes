@@ -197,7 +197,7 @@ export async function getProductBySlug(slug: string, viewer?: SessionUser | null
           phone: true,
           whatsapp: true,
           status: true,
-          logoPath: true,
+          logoPath: true, openingHours: true,
           description: true,
         },
       },
