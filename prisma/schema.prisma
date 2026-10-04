@@ -1,0 +1,481 @@
+// PinjeS database schema.
+// Money is always stored as Int (whole rupiah). Never use Float for money.
+// Dates for rentals (startDate/endDate, blocked dates) are stored at 00:00 UTC
+// and represent a calendar day in Asia/Jakarta.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // For production switch to "postgresql" (see README → Production database).
+  provider = "sqlite"
+}
+
+enum RoleKey {
+  CUSTOMER
+  STORE_OWNER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum StoreStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  REJECTED
+  SUSPENDED
+}
+
+enum StoreDocumentType {
+  STOREFRONT_PHOTO
+  BUSINESS_LICENSE
+  OTHER
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+enum AvailabilityType {
+  BLOCKED
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  PAYMENT_SUBMITTED
+  PAYMENT_CONFIRMED
+  PAYMENT_REJECTED
+  READY_FOR_PICKUP
+  RENTED
+  RETURNED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  QRIS
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  REJECTED
+}
+
+enum DepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DepositTransactionType {
+  TOP_UP
+  SERVICE_FEE
+  ADJUSTMENT
+}
+
+model Role {
+  id    Int     @id @default(autoincrement())
+  key   RoleKey @unique
+  name  String
+  users User[]
+}
+
+model User {
+  id              String     @id @default(cuid())
+  name            String
+  email           String     @unique
+  passwordHash    String
+  phone           String?
+  roleKey         RoleKey
+  role            Role       @relation(fields: [roleKey], references: [key])
+  status          UserStatus @default(ACTIVE)
+  suspendedReason String?
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  store         Store?
+  sessions      Session[]
+  bookings      Booking[]      @relation("CustomerBookings")
+  reviews       Review[]
+  notifications Notification[]
+  favorites     Favorite[]
+  auditLogs     AuditLog[]
+  paymentProofs PaymentProof[]
+
+  @@index([roleKey, status])
+}
+
+model Session {
+  // id = sha256(token). The raw token only lives in the httpOnly cookie.
+  id         String   @id
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Store {
+  id                String      @id @default(cuid())
+  ownerId           String      @unique
+  owner             User        @relation(fields: [ownerId], references: [id])
+  name              String
+  slug              String      @unique
+  tagline           String?
+  description       String      @default("")
+  phone             String      @default("")
+  whatsapp          String      @default("")
+  address           String      @default("")
+  city              String      @default("")
+  province          String      @default("")
+  latitude          Float?
+  longitude         Float?
+  openingHours      String?
+  logoPath          String?
+  coverPath         String?
+  qrisImagePath     String?
+  bankName          String?
+  bankAccountName   String?
+  bankAccountNumber String?
+  depositBalance    Int         @default(0)
+  status            StoreStatus @default(DRAFT)
+  onboardingStep    Int         @default(1)
+  submittedAt       DateTime?
+  verifiedAt        DateTime?
+  rejectionReason   String?
+  // Bumped inside transactions to take a row lock before touching the balance.
+  lockVersion       Int         @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  deletedAt         DateTime?
+
+  documents           StoreDocument[]
+  products            Product[]
+  bookings            Booking[]
+  deposits            Deposit[]
+  depositTransactions DepositTransaction[]
+  reviews             Review[]
+
+  @@index([status, city])
+}
+
+model StoreDocument {
+  id        String            @id @default(cuid())
+  storeId   String
+  store     Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  type      StoreDocumentType
+  filePath  String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime          @default(now())
+
+  @@index([storeId])
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  icon      String    @default("package")
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@index([isActive, sortOrder])
+}
+
+model Product {
+  id              String        @id @default(cuid())
+  storeId         String
+  store           Store         @relation(fields: [storeId], references: [id])
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id])
+  name            String
+  slug            String        @unique
+  description     String
+  pricePerDay     Int
+  securityDeposit Int           @default(0)
+  stock           Int           @default(1)
+  minRentalDays   Int           @default(1)
+  maxRentalDays   Int           @default(30)
+  rentalTerms     String        @default("")
+  city            String
+  province        String        @default("")
+  status          ProductStatus @default(ACTIVE)
+  ratingTotal     Int           @default(0)
+  ratingCount     Int           @default(0)
+  // Denormalized ratingTotal / ratingCount for sorting. Not money, so Float is fine.
+  ratingAvg       Float         @default(0)
+  rentalCount     Int           @default(0)
+  // Bumped at the start of a booking transaction to serialize bookings per product.
+  lockVersion     Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  images       ProductImage[]
+  availability ProductAvailability[]
+  bookingItems BookingItem[]
+  reviews      Review[]
+  favorites    Favorite[]
+
+  @@index([status, categoryId])
+  @@index([status, city])
+  @@index([storeId, status])
+  @@index([pricePerDay])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  path      String
+  alt       String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId, sortOrder])
+}
+
+model ProductAvailability {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  date      DateTime
+  type      AvailabilityType @default(BLOCKED)
+  note      String?
+  createdAt DateTime         @default(now())
+
+  @@unique([productId, date])
+}
+
+model Sequence {
+  name  String @id
+  value Int
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  customerId    String
+  customer      User          @relation("CustomerBookings", fields: [customerId], references: [id])
+  storeId       String
+  store         Store         @relation(fields: [storeId], references: [id])
+  status        BookingStatus @default(PENDING_PAYMENT)
+  startDate     DateTime
+  endDate       DateTime
+  days          Int
+  subtotal      Int
+  // Service fee charged to the store's deposit (never to the customer).
+  platformFee   Int           @default(0)
+  total         Int
+  customerNote  String?
+  paymentDueAt  DateTime?
+  confirmedAt   DateTime?
+  readyAt       DateTime?
+  pickedUpAt    DateTime?
+  returnedAt    DateTime?
+  completedAt   DateTime?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  cancelledById String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items   BookingItem[]
+  payment Payment?
+  review  Review?
+
+  @@index([storeId, status])
+  @@index([customerId, status])
+  @@index([status, startDate, endDate])
+}
+
+model BookingItem {
+  id              String  @id @default(cuid())
+  bookingId       String
+  booking         Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product @relation(fields: [productId], references: [id])
+  productName     String
+  pricePerDay     Int
+  securityDeposit Int     @default(0)
+  quantity        Int     @default(1)
+  days            Int
+  lineTotal       Int
+
+  @@index([productId])
+  @@index([bookingId])
+}
+
+model Payment {
+  id              String         @id @default(cuid())
+  bookingId       String         @unique
+  booking         Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  method          PaymentMethod?
+  amount          Int
+  status          PaymentStatus  @default(PENDING)
+  submittedAt     DateTime?
+  confirmedAt     DateTime?
+  confirmedById   String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  proofs PaymentProof[]
+}
+
+model PaymentProof {
+  id           String   @id @default(cuid())
+  paymentId    String
+  payment      Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  filePath     String   @unique
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  senderName   String?
+  createdAt    DateTime @default(now())
+
+  @@index([sha256])
+  @@index([paymentId])
+}
+
+model Deposit {
+  id              String        @id @default(cuid())
+  storeId         String
+  store           Store         @relation(fields: [storeId], references: [id])
+  amount          Int
+  status          DepositStatus @default(PENDING)
+  proofPath       String        @unique
+  proofMime       String
+  proofSha256     String
+  senderBank      String?
+  senderName      String?
+  transferDate    DateTime?
+  note            String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([storeId, createdAt])
+  @@index([proofSha256])
+}
+
+// Immutable ledger. Rows are only ever inserted, never updated or deleted.
+model DepositTransaction {
+  id            String                 @id @default(cuid())
+  storeId       String
+  store         Store                  @relation(fields: [storeId], references: [id])
+  type          DepositTransactionType
+  // Signed amount in rupiah: positive = credit, negative = debit.
+  amount        Int
+  balanceBefore Int
+  balanceAfter  Int
+  referenceType String
+  referenceId   String
+  description   String
+  createdById   String?
+  createdAt     DateTime               @default(now())
+
+  // Idempotency: one fee per booking, one credit per approved deposit.
+  @@unique([type, referenceType, referenceId])
+  @@index([storeId, createdAt])
+  @@index([type, createdAt])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id])
+  customerId String
+  customer   User     @relation(fields: [customerId], references: [id])
+  rating     Int
+  comment    String
+  photoPath  String?
+  isHidden   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([productId, isHidden])
+  @@index([storeId, isHidden])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+model Favorite {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, productId])
+}
+
+model AdminSetting {
+  key         String   @id
+  value       String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  // JSON string. Never store passwords, tokens or file URLs here.
+  metadata   String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([action, createdAt])
+  @@index([createdAt])
+}
