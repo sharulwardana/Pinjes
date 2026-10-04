@@ -1,21 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff } from "lucide-react";
 import { useLogin } from "@/features/auth/hooks";
 import { loginSchema, type LoginInput } from "@/features/auth/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Reveal } from "@/components/motion/reveal";
+import { Wordmark } from "@/components/navbar";
 
 export default function LoginPage() {
   const login = useLogin();
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -25,93 +28,95 @@ export default function LoginPage() {
     login.mutate(data);
   };
 
-  const handleQuickFill = (email: string, pass: string) => {
-    setValue("email", email);
-    setValue("password", pass);
-  };
-
   return (
-    <div className="flex min-h-[85vh] items-center justify-center p-4 bg-tech-grid">
-      <Card className="mx-auto w-full max-w-md rounded-3xl border-slate-200/90 shadow-xl bg-white/95 backdrop-blur-xl">
-        <CardHeader className="space-y-1 text-center pb-4">
-          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white font-black text-lg">
-            P<span className="text-emerald-400">S</span>
+    <div className="grid flex-1 lg:grid-cols-2">
+      {/* Panel merek, hanya di layar lebar */}
+      <aside className="relative hidden overflow-hidden bg-ink p-12 text-canvas lg:flex lg:flex-col lg:justify-between 2xl:p-16">
+        <div aria-hidden className="hero-glow pointer-events-none absolute inset-0 opacity-60" />
+        <div className="relative">
+          <span className="font-display text-3xl font-bold tracking-tight">pinjes</span>
+        </div>
+        <div className="relative max-w-lg">
+          <p className="text-eyebrow text-signal">Pinjam sebentar</p>
+          <p className="text-display mt-5 text-canvas" style={{ fontSize: "clamp(2.5rem, 1rem + 3.6vw, 5rem)" }}>
+            Barang yang kamu butuh, sudah ada yang punya.
+          </p>
+        </div>
+      </aside>
+
+      {/* Formulir */}
+      <section className="flex items-center justify-center px-5 py-12 md:py-20">
+        <Reveal immediate className="w-full max-w-md">
+          <div className="mb-8 lg:hidden">
+            <Wordmark />
           </div>
-          <CardTitle className="text-2xl font-black text-slate-950">Masuk ke PinjeS</CardTitle>
-          <CardDescription className="text-xs text-slate-500">
-            Akses akun Anda untuk menyewa atau mengelola toko rental.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+          <h1 className="text-title text-ink">Masuk ke PinjeS</h1>
+          <p className="mt-3 text-base text-muted">Akses akunmu untuk menyewa barang atau mengelola toko rental.</p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
+                inputMode="email"
                 placeholder="nama@email.com"
+                aria-invalid={Boolean(errors.email)}
                 {...register("email")}
                 disabled={login.isPending}
-                className="rounded-xl"
               />
-              {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+              {errors.email && (
+                <p role="alert" className="text-sm text-red-600">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
+
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Password kamu"
+                  aria-invalid={Boolean(errors.password)}
+                  className="pr-12"
+                  {...register("password")}
+                  disabled={login.isPending}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  aria-pressed={showPassword}
+                  className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted transition-colors hover:text-ink"
+                >
+                  {showPassword ? <EyeOff className="size-5" aria-hidden /> : <Eye className="size-5" aria-hidden />}
+                </button>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                {...register("password")}
-                disabled={login.isPending}
-                className="rounded-xl"
-              />
-              {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
+              {errors.password && (
+                <p role="alert" className="text-sm text-red-600">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
-            <Button
-              type="submit"
-              className="w-full h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-md transition-all hover:scale-[1.01]"
-              disabled={login.isPending}
-            >
-              {login.isPending ? "Memproses Autentikasi..." : "Masuk ke Akun"}
+
+            <Button type="submit" size="lg" className="w-full" disabled={login.isPending}>
+              {login.isPending ? "Memproses..." : "Masuk"}
             </Button>
           </form>
 
-          {/* Quick Login Helper Box */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 block mb-2 text-center">
-              Akses Cepat Pengujian (1-Klik Isi)
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickFill("admin@pinjes.id", "admin12345")}
-                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-left transition-colors text-xs"
-              >
-                <span className="font-bold block text-slate-900">👑 Super Admin</span>
-                <span className="text-[10px] text-slate-500 font-mono">admin@pinjes.id</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill("dimas.kamera@pinjes.id", "pinjes2026")}
-                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-left transition-colors text-xs"
-              >
-                <span className="font-bold block text-slate-900">🏪 Pemilik Toko</span>
-                <span className="text-[10px] text-slate-500 font-mono">dimas.kamera@...</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-5 text-center text-xs text-slate-500">
+          <p className="mt-8 text-center text-sm text-muted">
             Belum punya akun?{" "}
-            <Link href="/register" className="font-bold text-blue-600 hover:underline">
-              Daftar akun baru di sini
+            <Link href="/register" className="font-semibold text-brand underline-offset-4 hover:underline">
+              Daftar sekarang
             </Link>
-          </div>
-        </CardContent>
-      </Card>
+          </p>
+        </Reveal>
+      </section>
     </div>
   );
 }

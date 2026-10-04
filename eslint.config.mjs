@@ -6,6 +6,14 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    linterOptions: {
+      reportUnusedDisableDirectives: "off",
+    },
+    settings: {
+      react: {
+        version: "19.3.0",
+      },
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@next/next/no-img-element": "off",

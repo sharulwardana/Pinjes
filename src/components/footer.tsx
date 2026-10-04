@@ -9,64 +9,74 @@ function whatsappHref(raw: string) {
     return `https://wa.me/${normalized}`;
 }
 
+const linkClass = "text-canvas/70 transition-colors hover:text-signal";
+
 export async function Footer() {
     const settings = await getSettings();
     const support = settings.support_whatsapp ? whatsappHref(settings.support_whatsapp) : null;
 
     return (
-        <footer className="mt-auto border-t border-slate-200 bg-white">
-            <div className="container mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 md:flex-row md:justify-between">
+        <footer className="mt-24 overflow-hidden bg-ink text-canvas">
+            <div className="shell grid gap-12 pb-10 pt-16 md:grid-cols-[1.4fr_1fr_1fr] md:pt-20">
                 <div className="max-w-sm">
-                    <p className="text-lg font-bold tracking-tight text-slate-900">{settings.platform_name}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    <p className="font-display text-3xl font-bold tracking-tight">{settings.platform_name}</p>
+                    <p className="mt-4 text-sm leading-relaxed text-canvas/70">
                         Pinjam Sebentar. Temukan barang sewaan dari toko rental lokal, bayar langsung ke toko, lalu ambil sesuai
                         tanggal sewa.
                     </p>
                 </div>
 
-                <nav aria-label="Tautan footer" className="grid grid-cols-2 gap-8 text-sm">
-                    <div className="space-y-2">
-                        <p className="font-semibold text-slate-900">Penyewa</p>
-                        <ul className="space-y-2 text-slate-600">
+                <nav aria-label="Tautan penyewa" className="text-sm">
+                    <p className="text-eyebrow text-signal">Penyewa</p>
+                    <ul className="mt-5 space-y-3">
+                        <li>
+                            <Link href="/search" className={linkClass}>
+                                Cari barang
+                            </Link>
+                        </li>
+                        <li>
+                            <Link href="/orders" className={linkClass}>
+                                Pesanan saya
+                            </Link>
+                        </li>
+                    </ul>
+                </nav>
+
+                <nav aria-label="Tautan pemilik toko" className="text-sm">
+                    <p className="text-eyebrow text-signal">Pemilik toko</p>
+                    <ul className="mt-5 space-y-3">
+                        <li>
+                            <Link href="/register" className={linkClass}>
+                                Daftarkan toko
+                            </Link>
+                        </li>
+                        <li>
+                            <Link href="/dashboard/store" className={linkClass}>
+                                Dashboard toko
+                            </Link>
+                        </li>
+                        {support && (
                             <li>
-                                <Link href="/search" className="hover:text-slate-900">
-                                    Cari barang
-                                </Link>
+                                <a href={support} target="_blank" rel="noopener noreferrer" className={linkClass}>
+                                    Hubungi kami
+                                </a>
                             </li>
-                            <li>
-                                <Link href="/orders" className="hover:text-slate-900">
-                                    Pesanan saya
-                                </Link>
-                            </li>
-                        </ul>
-                    </div>
-                    <div className="space-y-2">
-                        <p className="font-semibold text-slate-900">Pemilik toko</p>
-                        <ul className="space-y-2 text-slate-600">
-                            <li>
-                                <Link href="/register" className="hover:text-slate-900">
-                                    Daftarkan toko
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/dashboard/store" className="hover:text-slate-900">
-                                    Dashboard toko
-                                </Link>
-                            </li>
-                            {support && (
-                                <li>
-                                    <a href={support} target="_blank" rel="noopener noreferrer" className="hover:text-slate-900">
-                                        Hubungi kami
-                                    </a>
-                                </li>
-                            )}
-                        </ul>
-                    </div>
+                        )}
+                    </ul>
                 </nav>
             </div>
 
-            <div className="border-t border-slate-100">
-                <p className="container mx-auto max-w-7xl px-4 py-4 text-xs text-slate-500">
+            {/* Wordmark raksasa sebagai penutup */}
+            <p
+                aria-hidden
+                className="select-none whitespace-nowrap text-center font-display font-bold leading-[0.8] tracking-tighter text-canvas/[0.06]"
+                style={{ fontSize: "clamp(5rem, 24vw, 26rem)" }}
+            >
+                pinjes
+            </p>
+
+            <div className="border-t border-white/10">
+                <p className="shell py-5 text-xs text-canvas/50">
                     &copy; {new Date().getFullYear()} {settings.platform_name}. Pembayaran dilakukan langsung antara penyewa dan
                     toko.
                 </p>

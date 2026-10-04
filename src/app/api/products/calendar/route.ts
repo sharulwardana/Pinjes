@@ -2,7 +2,7 @@ import { route, ok } from "@/server/api";
 import { AppError } from "@/server/errors";
 import { db } from "@/server/db";
 import { getProductCalendar } from "@/server/services/availability";
-import { eachDateKey, isDateKey } from "@/lib/dates";
+import { isDateKey, rentalDays } from "@/lib/dates";
 
 const MAX_RANGE_DAYS = 400;
 
@@ -15,7 +15,9 @@ export const GET = route({}, async ({ req }) => {
     if (!productId || !from || !to || !isDateKey(from) || !isDateKey(to) || from > to) {
         throw new AppError("Parameter kalender tidak valid.", 400);
     }
-    if (eachDateKey(from, to).length > MAX_RANGE_DAYS) {
+    // Hitung dengan aritmetika, jangan membuat daftar tanggalnya dulu
+    // (rentang 0001..9999 akan menjadi jutaan iterasi).
+    if (rentalDays(from, to) > MAX_RANGE_DAYS) {
         throw new AppError("Rentang tanggal terlalu panjang.", 400);
     }
 

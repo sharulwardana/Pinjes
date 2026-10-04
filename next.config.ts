@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Jangan beri tahu dunia bahwa ini Next.js
+  poweredByHeader: false,
 };
 
 export default nextConfig;

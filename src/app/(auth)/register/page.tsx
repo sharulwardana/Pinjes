@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ShoppingBag, Store } from "lucide-react";
 import { useRegister } from "@/features/auth/hooks";
@@ -30,14 +30,14 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: { accountType: "renter" },
   });
 
-  const accountType = watch("accountType");
+  const accountType = useWatch({ control, name: "accountType" });
 
   const onSubmit = (data: RegisterInput) => {
     registerMut.mutate(data);
