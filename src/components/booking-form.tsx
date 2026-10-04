@@ -61,7 +61,6 @@ export function BookingForm({
 
   useEffect(() => {
     let cancelled = false;
-    setLoad("loading");
     const qs = new URLSearchParams({ productId, from: today, to: lastKey });
     fetch(`/api/products/calendar?${qs.toString()}`)
       .then(async (res) => {
@@ -185,7 +184,10 @@ export function BookingForm({
             <p>Kalender ketersediaan gagal dimuat.</p>
             <button
               type="button"
-              onClick={() => setAttempt((n) => n + 1)}
+              onClick={() => {
+                setLoad("loading");
+                setAttempt((n) => n + 1);
+              }}
               className="font-medium text-slate-900 underline"
             >
               Coba lagi

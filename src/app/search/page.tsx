@@ -235,7 +235,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,16.5rem),1fr))] md:gap-6">
               {result.items.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

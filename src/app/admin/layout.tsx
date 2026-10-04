@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { getCurrentUser } from "@/server/session";
 import { redirect } from "next/navigation";
-import { Navbar } from "@/components/navbar";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();

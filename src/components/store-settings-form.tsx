@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { useUpdateStoreSettings } from "@/features/store/hooks";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ export function StoreSettingsForm({ store }: { store: StoreData }) {
   const [qrisChanged, setQrisChanged] = useState(false);
   const [qrisUploading, setQrisUploading] = useState(false);
 
-  const { register, handleSubmit, setValue, watch } = useForm({
+  const { register, handleSubmit, setValue, control } = useForm({
     defaultValues: {
       name: store.name || "",
       tagline: store.tagline || "",
@@ -68,7 +68,7 @@ export function StoreSettingsForm({ store }: { store: StoreData }) {
     },
   });
 
-  const watchedWa = watch("whatsapp");
+  const watchedWa = useWatch({ control, name: "whatsapp" });
   const waLink = watchedWa ? whatsappTestLink(watchedWa) : null;
 
   const setCoords = (newLat: number | null, newLng: number | null) => {

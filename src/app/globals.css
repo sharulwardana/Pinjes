@@ -1,34 +1,167 @@
 @import "tailwindcss";
 
-:root {
-  --background: #fafaf9;
-  --foreground: #09090b;
-  --accent: #1f6b5a;
-  --accent-foreground: #ffffff;
-  --radius-card: 1rem;
-  --radius-control: 0.75rem;
+/* ──────────────────────────────────────────────────────────────
+   PinjeS design tokens
+   Breakpoint (selaras dengan DevTools):
+     tanpa prefix = Mobile S 320 · xs: Mobile M 375 · ml: Mobile L 425
+     md: Tablet 768 · lg: Laptop 1024 · 2xl: Laptop L 1440 · 3xl: 4K 2560
+   ────────────────────────────────────────────────────────────── */
+@theme {
+  --breakpoint-xs: 375px;
+  --breakpoint-ml: 425px;
+  --breakpoint-2xl: 1440px;
+  --breakpoint-3xl: 2560px;
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  /* Netral hangat + satu warna sinyal. Semua dalam OKLCH. */
+  --color-canvas: oklch(0.972 0.011 88);
+  --color-surface: oklch(0.995 0.004 88);
+  --color-ink: oklch(0.2 0.015 262);
+  --color-muted: oklch(0.5 0.015 262);
+  --color-line: oklch(0.905 0.012 88);
+  --color-brand: oklch(0.38 0.08 172);
+  --color-brand-soft: oklch(0.93 0.05 172);
+  --color-signal: oklch(0.93 0.19 120);
+
+  /* Alias supaya komponen lama (Button, focus ring) ikut tema baru */
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-ink);
+  --color-accent: var(--color-brand);
+  --color-accent-foreground: oklch(0.99 0 0);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-float: float 7s ease-in-out infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ── Dasar ───────────────────────────────────────────────────── */
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 6rem;
+}
+
+/* Semua ukuran memakai rem, jadi antarmuka ikut membesar di layar lebar. */
+@media (width >= 1440px) {
+  html {
+    font-size: 106.25%;
+  }
+}
+@media (width >= 2560px) {
+  html {
+    font-size: 137.5%;
+  }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  overflow-x: hidden;
+  min-height: 100dvh;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* clip (bukan hidden) supaya position: sticky tetap jalan */
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-signal);
+  color: var(--color-ink);
 }
 
 /* Fokus keyboard yang jelas di seluruh aplikasi */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
+}
+
+/* ── Utilitas ────────────────────────────────────────────────── */
+
+/* Lebar konten yang tumbuh mengikuti layar */
+@utility shell {
+  width: min(100% - 2rem, 80rem);
+  margin-inline: auto;
+
+  @media (width >= 768px) {
+    width: min(100% - 4rem, 80rem);
+  }
+  @media (width >= 1440px) {
+    width: min(100% - 6rem, 90rem);
+  }
+  @media (width >= 2560px) {
+    width: min(100% - 8rem, 100rem);
+  }
+}
+
+/* Tipografi fluid */
+@utility text-display {
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 1.4rem + 6.4vw, 7rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+@utility text-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.875rem, 1.2rem + 2.6vw, 3.5rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+@utility text-eyebrow {
+  font-size: 0.75rem;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Cahaya lembut di latar hero */
+@utility hero-glow {
+  background-image:
+    radial-gradient(60rem 36rem at 85% -10%, oklch(0.93 0.19 120 / 0.45), transparent 70%),
+    radial-gradient(40rem 30rem at -10% 30%, oklch(0.9 0.06 172 / 0.5), transparent 70%);
+}
+
+@utility hide-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Muncul saat di-scroll, murni CSS (tanpa JS) jika browser mendukung */
+@utility reveal-on-scroll {
+  @supports (animation-timeline: view()) {
+    animation: reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Hormati pengguna yang mematikan animasi di sistemnya */

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ImageOff, MapPin, Star } from "lucide-react";
+import { ArrowUpRight, ImageOff, MapPin, Star } from "lucide-react";
 import { formatRupiah } from "@/lib/format";
+import { ProductImage } from "@/components/product-image";
 
 export interface ProductCardData {
     id: string;
@@ -15,57 +16,71 @@ export interface ProductCardData {
     category?: { name: string } | null;
 }
 
-export function ProductCard({ product }: { product: ProductCardData }) {
+export function ProductCard({ product, priority = false }: { product: ProductCardData; priority?: boolean }) {
     const photo = product.photos[0];
 
     return (
         <Link
             href={`/p/${product.slug}`}
-            className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-colors hover:border-slate-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            className="group relative flex h-full flex-col rounded-[1.75rem] bg-surface p-2 ring-1 ring-line transition duration-500 ease-out-expo hover:-translate-y-1.5 hover:shadow-[0_28px_56px_-28px_rgb(0_0_0/0.3)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
         >
-            <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-100">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[1.4rem] bg-line/60">
                 {photo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                        src={`/api/files/${photo}`}
+                    <ProductImage
+                        path={photo}
                         alt={product.name}
-                        loading="lazy"
-                        className="h-full w-full object-cover"
+                        priority={priority}
+                        className="size-full object-cover transition duration-700 ease-out-expo group-hover:scale-[1.06]"
                     />
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center text-slate-400">
-                        <ImageOff className="h-8 w-8" aria-label="Belum ada foto" />
+                    <div className="flex size-full items-center justify-center text-muted">
+                        <ImageOff className="size-8" aria-label="Belum ada foto" />
                     </div>
                 )}
+
+                {product.category && (
+                    <span className="absolute left-3 top-3 rounded-full bg-surface/85 px-3 py-1 text-xs font-semibold text-ink backdrop-blur">
+                        {product.category.name}
+                    </span>
+                )}
+
+                {product.ratingCount > 0 && (
+                    <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-surface/85 px-2.5 py-1 text-xs font-semibold text-ink backdrop-blur">
+                        <Star className="size-3.5 fill-amber-400 text-amber-400" aria-hidden />
+                        {product.ratingAvg.toFixed(1)}
+                        <span className="font-normal text-muted">({product.ratingCount})</span>
+                    </span>
+                )}
+
+                <span className="absolute bottom-3 left-3 rounded-full bg-ink/90 px-3.5 py-1.5 text-sm font-semibold text-canvas backdrop-blur">
+                    {formatRupiah(product.pricePerDay)}
+                    <span className="text-xs font-normal text-canvas/70"> / hari</span>
+                </span>
             </div>
 
-            <div className="flex flex-1 flex-col justify-between p-4">
-                <div>
-                    {product.category && <p className="text-xs font-medium text-slate-500">{product.category.name}</p>}
-                    <h3 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-slate-900">{product.name}</h3>
-                    <p className="mt-1 truncate text-sm text-slate-600">{product.store.name}</p>
-                    <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
-                        <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        <span className="truncate">{product.store.city || "Lokasi belum diisi"}</span>
+            <div className="flex flex-1 items-end justify-between gap-3 px-3 pb-3 pt-4">
+                <div className="min-w-0">
+                    <h3 className="line-clamp-2 font-display text-lg font-semibold leading-snug tracking-tight text-ink">
+                        {product.name}
+                    </h3>
+                    <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted">
+                        <MapPin className="size-3.5 shrink-0" aria-hidden />
+                        <span className="truncate">
+                            {product.store.name}
+                            {product.store.city ? ` · ${product.store.city}` : ""}
+                        </span>
                     </p>
-
-                    {(product.ratingCount > 0 || product.rentalCount > 0) && (
-                        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
-                            {product.ratingCount > 0 && (
-                                <span className="inline-flex items-center gap-1">
-                                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
-                                    {product.ratingAvg.toFixed(1)} ({product.ratingCount})
-                                </span>
-                            )}
-                            {product.rentalCount > 0 && <span>Disewa {product.rentalCount}x</span>}
-                        </p>
+                    {product.rentalCount > 0 && (
+                        <p className="mt-1 text-xs text-muted">Sudah disewa {product.rentalCount}x</p>
                     )}
                 </div>
 
-                <p className="mt-4 border-t border-slate-100 pt-3 text-base font-bold text-slate-900">
-                    {formatRupiah(product.pricePerDay)}
-                    <span className="text-xs font-normal text-slate-500"> / hari</span>
-                </p>
+                <span
+                    aria-hidden
+                    className="grid size-10 shrink-0 place-items-center rounded-full bg-canvas text-ink transition duration-500 ease-out-expo group-hover:rotate-45 group-hover:bg-signal"
+                >
+                    <ArrowUpRight className="size-5" />
+                </span>
             </div>
         </Link>
     );
