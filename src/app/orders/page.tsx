@@ -1,75 +1,157 @@
+import Link from "next/link";
+import { ArrowUpRight, CalendarDays, PackageSearch } from "lucide-react";
 import { requireRole } from "@/server/session";
 import { getCustomerBookings } from "@/server/services/bookings";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { BOOKING_STATUS_META, type BookingStatus } from "@/features/booking/status";
+import { ProductImage } from "@/components/product-image";
+import {
+  BOOKING_STATUS_META,
+  FINISHED_STATUSES,
+  type BookingStatus,
+  type Tone,
+} from "@/features/booking/status";
+import { formatDateRange, formatRupiah } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
-const formatDate = (d: Date) => d.toLocaleDateString("id-ID", { timeZone: "UTC" });
+type Booking = Awaited<ReturnType<typeof getCustomerBookings>>[number];
+
+const TONE_TO_VARIANT: Record<Tone, "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info" | "accent"> = {
+  neutral: "outline",
+  accent: "accent",
+  success: "success",
+  warning: "warning",
+  danger: "destructive",
+  info: "info",
+};
+
+function OrderCard({ booking }: { booking: Booking }) {
+  const status = booking.status as BookingStatus;
+  const meta = BOOKING_STATUS_META[status];
+  const needsAction = status === "PENDING_PAYMENT" || status === "PAYMENT_REJECTED";
+  const firstItem = booking.items[0];
+  const photo = firstItem?.product.images[0]?.path;
+  const extra = booking.items.length - 1;
+
+  return (
+    <Link
+      href={`/orders/${booking.code}`}
+      className={cn(
+        "group flex gap-4 rounded-[1.75rem] bg-surface p-3 ring-1 transition duration-500 ease-out-expo hover:-translate-y-1 hover:shadow-[0_24px_48px_-28px_rgb(0_0_0/0.3)] ml:gap-5 ml:p-4",
+        needsAction ? "ring-2 ring-signal" : "ring-line",
+      )}
+    >
+      <div className="size-24 shrink-0 overflow-hidden rounded-2xl bg-line/60 ml:size-28 md:size-32">
+        {photo && (
+          <ProductImage
+            path={photo}
+            alt={firstItem?.productName ?? ""}
+            className="size-full object-cover transition duration-700 ease-out-expo group-hover:scale-105"
+          />
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={TONE_TO_VARIANT[meta.tone]}>{meta.label}</Badge>
+            <span className="font-mono text-xs text-muted">#{booking.code}</span>
+          </div>
+
+          <h2 className="mt-2 truncate font-display text-lg font-semibold tracking-tight text-ink">
+            {firstItem?.productName ?? "Pesanan"}
+            {extra > 0 && <span className="text-sm font-normal text-muted"> +{extra} barang</span>}
+          </h2>
+          <p className="mt-0.5 truncate text-sm text-muted">{booking.store.name}</p>
+
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
+            <CalendarDays className="size-4 shrink-0" aria-hidden />
+            {formatDateRange(booking.startDate, booking.endDate, { short: true })}
+          </p>
+
+          {status === "PAYMENT_REJECTED" && booking.payment?.rejectionReason && (
+            <p className="mt-2 line-clamp-2 text-sm text-red-700">Ditolak: {booking.payment.rejectionReason}</p>
+          )}
+        </div>
+
+        <div className="flex items-end justify-between gap-3">
+          <p className="font-display text-xl font-bold tracking-tight text-ink">{formatRupiah(booking.total)}</p>
+          <span
+            className={cn(
+              "inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition",
+              needsAction ? "bg-signal text-ink" : "bg-canvas text-ink group-hover:bg-ink group-hover:text-canvas",
+            )}
+          >
+            {status === "PAYMENT_REJECTED" ? "Unggah ulang" : needsAction ? "Bayar sekarang" : "Detail"}
+            <ArrowUpRight className="size-4" aria-hidden />
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  return (
+    <section aria-label={title}>
+      <h2 className="mb-4 flex items-center gap-3 font-display text-xl font-bold tracking-tight text-ink">
+        {title}
+        <span className="rounded-full bg-canvas px-2.5 py-0.5 font-sans text-xs font-semibold text-muted ring-1 ring-line">
+          {count}
+        </span>
+      </h2>
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr))] md:gap-5">{children}</div>
+    </section>
+  );
+}
 
 export default async function CustomerOrdersPage() {
   const user = await requireRole(["CUSTOMER", "STORE_OWNER"]);
   const bookings = await getCustomerBookings(user);
 
+  const history = bookings.filter((b) => FINISHED_STATUSES.includes(b.status as BookingStatus));
+  const running = bookings.filter((b) => !FINISHED_STATUSES.includes(b.status as BookingStatus));
+
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-8 space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Pesanan Saya</h1>
+    <div className="shell space-y-10 pb-8 pt-4 md:space-y-12 md:pt-8">
+      <header>
+        <p className="text-eyebrow text-brand">Akun</p>
+        <h1 className="text-title mt-3 text-ink">Pesanan saya</h1>
+      </header>
 
       {bookings.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-200 py-32 text-center">
-          <p className="text-lg font-medium text-zinc-900">Belum ada pesanan</p>
-          <p className="mt-1 text-sm text-zinc-500">Kamu belum pernah menyewa barang.</p>
+        <div className="flex flex-col items-center rounded-[2rem] border border-dashed border-line bg-surface/60 px-5 py-20 text-center">
+          <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
+            <PackageSearch className="size-7" aria-hidden />
+          </span>
+          <p className="mt-5 font-display text-2xl font-bold tracking-tight text-ink">Belum ada pesanan</p>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
+            Kamu belum pernah menyewa barang. Cari yang kamu butuhkan, pilih tanggal, dan pesanannya akan muncul di sini.
+          </p>
+          <Link
+            href="/search"
+            className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-sm font-semibold text-canvas transition hover:bg-ink/85 active:scale-95"
+          >
+            Jelajahi barang
+            <ArrowUpRight className="size-4" aria-hidden />
+          </Link>
         </div>
       ) : (
-        <div className="space-y-4">
-          {bookings.map((booking) => {
-            const status = booking.status as BookingStatus;
-            const needsAction = status === "PENDING_PAYMENT" || status === "PAYMENT_REJECTED";
-            return (
-              <div
-                key={booking.id}
-                className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm flex flex-col md:flex-row gap-6"
-              >
-                <div className="flex-1 space-y-2">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="font-semibold text-lg">{booking.store.name}</h3>
-                    <Badge variant={needsAction ? "destructive" : "default"}>
-                      {BOOKING_STATUS_META[status].label}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-zinc-500">
-                    {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
-                  </p>
-                  <div className="pt-2">
-                    {booking.items.map((item) => (
-                      <div key={item.id} className="text-sm font-medium text-zinc-900">
-                        {item.productName}
-                      </div>
-                    ))}
-                  </div>
-                  {status === "PAYMENT_REJECTED" && booking.payment?.rejectionReason && (
-                    <p className="text-sm text-red-700">
-                      Alasan penolakan: {booking.payment.rejectionReason}
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-col items-end justify-between min-w-32">
-                  <div className="text-right">
-                    <p className="text-xs text-zinc-500">Total Bayar</p>
-                    <p className="font-bold text-lg text-zinc-900">
-                      Rp {booking.total.toLocaleString("id-ID")}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/orders/${booking.code}`}
-                    className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-zinc-50 shadow transition-colors hover:bg-zinc-900/90"
-                  >
-                    {status === "PAYMENT_REJECTED" ? "Unggah ulang bukti" : "Detail Pesanan"}
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <>
+          {running.length > 0 && (
+            <Section title="Sedang berjalan" count={running.length}>
+              {running.map((b) => (
+                <OrderCard key={b.id} booking={b} />
+              ))}
+            </Section>
+          )}
+          {history.length > 0 && (
+            <Section title="Riwayat" count={history.length}>
+              {history.map((b) => (
+                <OrderCard key={b.id} booking={b} />
+              ))}
+            </Section>
+          )}
+        </>
       )}
     </div>
   );

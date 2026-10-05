@@ -41,11 +41,15 @@ export function CancelOrderBtn({ bookingId }: { bookingId: string }) {
     }
 
     return (
-        <div className="space-y-2">
-            <p className="text-sm text-zinc-700">Yakin ingin membatalkan pesanan ini?</p>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="space-y-3 rounded-2xl bg-red-50 p-4 ring-1 ring-red-200">
+            <p className="text-sm font-medium text-red-900">Yakin ingin membatalkan pesanan ini? Tanggalnya akan dilepas untuk penyewa lain.</p>
+            {error && (
+                <p role="alert" className="text-sm text-red-700">
+                    {error}
+                </p>
+            )}
             <div className="flex gap-2">
-                <Button variant="destructive" className="w-full" onClick={cancel} disabled={loading}>
+                <Button variant="destructive" className="flex-1" onClick={cancel} disabled={loading}>
                     {loading ? "Memproses..." : "Ya, batalkan"}
                 </Button>
                 <Button variant="outline" onClick={() => setConfirming(false)} disabled={loading}>
