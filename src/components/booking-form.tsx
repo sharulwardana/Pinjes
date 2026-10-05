@@ -9,6 +9,7 @@ import { useAuth } from "@/features/auth/hooks";
 import { Button } from "@/components/ui/button";
 import { eachDateKey, parseDateKey, toDateKey, todayKey } from "@/lib/dates";
 import { formatRupiah } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface BookingFormProps {
   productId: string;
@@ -61,6 +62,7 @@ export function BookingForm({
 
   useEffect(() => {
     let cancelled = false;
+    setLoad("loading");
     const qs = new URLSearchParams({ productId, from: today, to: lastKey });
     fetch(`/api/products/calendar?${qs.toString()}`)
       .then(async (res) => {
@@ -153,19 +155,19 @@ export function BookingForm({
     });
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 p-3">
-        <div className="mb-2 flex items-center justify-between">
+    <div className="space-y-5">
+      <div className="rounded-3xl bg-canvas p-3 ring-1 ring-line ml:p-4">
+        <div className="mb-3 flex items-center justify-between">
           <button
             type="button"
             onClick={() => shiftMonth(-1)}
             disabled={currentMonthKey <= firstMonthKey}
             aria-label="Bulan sebelumnya"
-            className="rounded-lg p-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-30"
+            className="grid size-10 place-items-center rounded-full bg-surface text-ink ring-1 ring-line transition hover:ring-ink disabled:opacity-30 disabled:hover:ring-line"
           >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
+            <ChevronLeft className="size-5" aria-hidden />
           </button>
-          <p className="text-sm font-semibold capitalize text-slate-900" aria-live="polite">
+          <p className="font-display text-base font-semibold capitalize tracking-tight text-ink" aria-live="polite">
             {monthLabel}
           </p>
           <button
@@ -173,75 +175,91 @@ export function BookingForm({
             onClick={() => shiftMonth(1)}
             disabled={currentMonthKey >= lastMonthKey}
             aria-label="Bulan berikutnya"
-            className="rounded-lg p-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-30"
+            className="grid size-10 place-items-center rounded-full bg-surface text-ink ring-1 ring-line transition hover:ring-ink disabled:opacity-30 disabled:hover:ring-line"
           >
-            <ChevronRight className="h-5 w-5" aria-hidden />
+            <ChevronRight className="size-5" aria-hidden />
           </button>
         </div>
 
         {load === "error" ? (
-          <div className="space-y-2 py-6 text-center text-sm text-slate-600">
+          <div className="space-y-2 py-8 text-center text-sm text-muted">
             <p>Kalender ketersediaan gagal dimuat.</p>
             <button
               type="button"
-              onClick={() => {
-                setLoad("loading");
-                setAttempt((n) => n + 1);
-              }}
-              className="font-medium text-slate-900 underline"
+              onClick={() => setAttempt((n) => n + 1)}
+              className="font-semibold text-ink underline underline-offset-4"
             >
               Coba lagi
             </button>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-slate-500">
+            <div className="grid grid-cols-7 text-center text-[0.6875rem] font-semibold uppercase tracking-wider text-muted">
               {WEEKDAYS.map((d) => (
-                <span key={d}>{d}</span>
+                <span key={d} className="py-1">
+                  {d}
+                </span>
               ))}
             </div>
 
-            <div className={`mt-1 grid grid-cols-7 gap-1 ${load === "loading" ? "opacity-50" : ""}`}>
+            <div className={cn("mt-1 grid grid-cols-7 gap-y-1 transition-opacity", load === "loading" && "opacity-50")}>
               {cells.map((key, i) => {
                 if (!key) return <span key={`blank-${i}`} />;
 
                 const st = status[key];
                 const available = load === "ready" && st === "available";
-                const isEdge = key === start || key === end;
+                const isStart = key === start;
+                const isEnd = key === end;
+                const isEdge = isStart || isEnd;
                 const inRange = Boolean(start && end && key > start && key < end);
+                const isToday = key === today;
 
-                let cls = "text-slate-300";
-                if (isEdge) cls = "bg-slate-900 text-white";
-                else if (inRange) cls = "bg-slate-200 text-slate-900";
-                else if (available) cls = "text-slate-900 hover:bg-slate-100";
-                else if (st === "booked" || st === "blocked") cls = "text-slate-400 line-through";
+                // Garis latar yang menyambungkan tanggal awal sampai akhir
+                const strip = inRange
+                  ? "bg-brand-soft"
+                  : isStart && end
+                    ? "bg-linear-to-r from-transparent from-50% to-brand-soft to-50%"
+                    : isEnd
+                      ? "bg-linear-to-l from-transparent from-50% to-brand-soft to-50%"
+                      : "";
+
+                let cls = "text-muted/40";
+                if (isEdge) cls = "bg-ink text-canvas";
+                else if (inRange) cls = "text-brand";
+                else if (available) cls = "text-ink hover:bg-surface hover:ring-1 hover:ring-ink";
+                else if (st === "booked" || st === "blocked") cls = "text-muted/50 line-through";
 
                 return (
-                  <button
-                    key={key}
-                    type="button"
-                    disabled={!available}
-                    onClick={() => pick(key)}
-                    aria-label={`${longDate(key)}${st === "booked" || st === "blocked" ? ", tidak tersedia" : ""}`}
-                    aria-pressed={isEdge}
-                    className={`aspect-square rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-900 ${cls}`}
-                  >
-                    {Number(key.slice(8))}
-                  </button>
+                  <div key={key} className={cn("flex justify-center", strip)}>
+                    <button
+                      type="button"
+                      disabled={!available}
+                      onClick={() => pick(key)}
+                      aria-label={`${longDate(key)}${st === "booked" || st === "blocked" ? ", tidak tersedia" : ""}`}
+                      aria-pressed={isEdge}
+                      className={cn(
+                        "aspect-square w-full max-w-11 rounded-full text-sm font-semibold transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand",
+                        isToday && !isEdge && "ring-1 ring-signal",
+                        cls,
+                      )}
+                    >
+                      {Number(key.slice(8))}
+                    </button>
+                  </div>
                 );
               })}
             </div>
           </>
         )}
 
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs leading-relaxed text-muted">
           Tanggal yang dicoret sudah penuh atau tidak tersedia. Minimal sewa {minRentalDays} hari, maksimal{" "}
           {maxRentalDays} hari.
         </p>
       </div>
 
-      <div className="text-sm text-slate-700" aria-live="polite">
-        {!start && <p>Pilih tanggal mulai sewa.</p>}
+      <div className="min-h-6 text-sm font-medium text-ink" aria-live="polite">
+        {!start && <p className="text-muted">Pilih tanggal mulai sewa.</p>}
         {start && !end && <p>Mulai {shortDate(start)}. Sekarang pilih tanggal selesai.</p>}
         {start && end && (
           <p>
@@ -251,29 +269,30 @@ export function BookingForm({
       </div>
 
       {days > 0 && (
-        <div className="space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600">
-          <div className="flex justify-between">
+        <div className="space-y-2.5 rounded-3xl bg-canvas p-4 text-sm text-muted ring-1 ring-line">
+          <div className="flex justify-between gap-4">
             <span>
               {formatRupiah(pricePerDay)} x {days} hari
             </span>
-            <span>{formatRupiah(lineTotal)}</span>
+            <span className="text-ink">{formatRupiah(lineTotal)}</span>
           </div>
           {securityDeposit > 0 && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <span>Uang jaminan</span>
-              <span>{formatRupiah(securityDeposit)}</span>
+              <span className="text-ink">{formatRupiah(securityDeposit)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t border-slate-100 pt-2 text-lg font-bold text-slate-900">
-            <span>Total bayar</span>
-            <span>{formatRupiah(total)}</span>
+          <div className="flex items-baseline justify-between gap-4 border-t border-line pt-3 text-ink">
+            <span className="font-semibold">Total bayar</span>
+            <span className="font-display text-2xl font-bold tracking-tight">{formatRupiah(total)}</span>
           </div>
         </div>
       )}
 
       <Button
         size="lg"
-        className="w-full text-base font-semibold"
+        variant="signal"
+        className="h-14 w-full text-base"
         onClick={submit}
         disabled={createBooking.isPending || !start || !end || days <= 0}
       >

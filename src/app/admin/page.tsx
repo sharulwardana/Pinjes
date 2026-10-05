@@ -288,7 +288,7 @@ export default function AdminDashboardPage() {
                             Lihat bukti
                           </a>
                         </td>
-                        <td className="min-w-[240px] p-4">
+                        <td className="min-w-60 p-4">
                           {rejectingId === d.id ? (
                             <RejectBox
                               busy={rejectDeposit.isPending}

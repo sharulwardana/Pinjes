@@ -18,8 +18,9 @@ export function MobileNav() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  // Halaman masuk/daftar tidak perlu navigasi bawah.
-  if (pathname.startsWith("/login") || pathname.startsWith("/register")) return null;
+  // Halaman masuk/daftar tidak perlu navigasi bawah. Halaman barang (/p/...)
+  // punya bar harga sendiri di dasar layar, jadi navigasi ini disembunyikan di sana.
+  if (pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/p/")) return null;
 
   const items: Item[] = [
     { href: "/", label: "Beranda", icon: House },

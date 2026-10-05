@@ -59,7 +59,7 @@ export default function RegisterPage() {
                   <label
                     key={value}
                     htmlFor={`type-${value}`}
-                    className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-400 has-[:checked]:border-accent has-[:checked]:bg-accent/5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent"
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-400 has-checked:border-accent has-checked:bg-accent/5 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
                   >
                     <input
                       type="radio"
