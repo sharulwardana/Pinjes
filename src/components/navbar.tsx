@@ -36,18 +36,20 @@ export function Navbar() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
   const account = accountLink(user?.role);
+
+  // Tutup menu saat rute berpindah (pola resmi React tanpa cascading renders)
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setOpen(false);
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  // Tutup menu saat rute berpindah
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   // Menu penuh layar: kunci scroll dan tutup dengan Escape.
   useEffect(() => {
@@ -166,7 +168,7 @@ export function Navbar() {
             role="dialog"
             aria-modal="true"
             aria-label="Menu utama"
-            className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-canvas px-5 pb-8 pt-3 md:hidden"
+            className="fixed inset-0 z-60 flex flex-col overflow-y-auto bg-canvas px-5 pb-8 pt-3 md:hidden"
             initial={{ clipPath: "circle(0% at 90% 4%)" }}
             animate={{ clipPath: "circle(150% at 90% 4%)" }}
             exit={{ clipPath: "circle(0% at 90% 4%)" }}
