@@ -1,26 +1,10 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CalendarDays, X } from "lucide-react";
 import { formatRupiah } from "@/lib/format";
+import { useIsDesktop } from "@/lib/use-is-desktop";
 import { cn } from "@/lib/utils";
-
-const DESKTOP_QUERY = "(min-width: 1024px)";
-
-function subscribe(onChange: () => void) {
-  const mq = window.matchMedia(DESKTOP_QUERY);
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
-}
-
-/** true di layar >= 1024px. Server dianggap desktop supaya HTML awal tidak tersembunyi. */
-function useIsDesktop() {
-  return useSyncExternalStore(
-    subscribe,
-    () => window.matchMedia(DESKTOP_QUERY).matches,
-    () => true,
-  );
-}
 
 interface BookingPanelProps {
   pricePerDay: number;

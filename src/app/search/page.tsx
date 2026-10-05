@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, SearchX } from "lucide-react";
+import { ArrowLeft, ArrowRight, SearchX, X } from "lucide-react";
 import { db } from "@/server/db";
 import { searchProducts } from "@/server/services/products";
 import type { SearchInput } from "@/features/products/schemas";
 import { isDateKey, todayKey } from "@/lib/dates";
+import { formatDateRange, formatRupiah } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { ProductCard } from "@/components/product-card";
+import { FilterDrawer } from "@/components/filter-drawer";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Cari Barang | PinjeS" };
+export const metadata: Metadata = { title: "Jelajahi Barang | PinjeS" };
 
 const SORTS = [
   { value: "popular", label: "Terpopuler" },
@@ -37,8 +40,11 @@ function buildHref(base: Record<string, string | undefined>, overrides: Record<s
   return s ? `/search?${s}` : "/search";
 }
 
-const inputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900";
+const fieldClass =
+  "h-12 w-full rounded-2xl border border-line bg-surface px-4 text-base text-ink placeholder:text-muted/70 transition focus:border-ink focus:outline-none focus:ring-4 focus:ring-signal/50";
+
+const chipBase =
+  "inline-flex h-11 shrink-0 items-center rounded-full px-5 text-sm font-semibold transition duration-300 active:scale-95";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Params> }) {
   const p = await searchParams;
@@ -88,191 +94,254 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   };
   const link = (overrides: Record<string, string | undefined>) => buildHref(current, overrides);
 
-  const hasFilters = Boolean(
-    q || activeCategory || minPrice !== undefined || maxPrice !== undefined || startDate,
-  );
+  // Filter aktif ditampilkan sebagai chip yang bisa dihapus satu per satu.
+  const activeFilters: { key: string; label: string; href: string }[] = [];
+  if (q) activeFilters.push({ key: "q", label: `"${q}"`, href: link({ q: undefined }) });
+  if (activeCategory) {
+    activeFilters.push({ key: "category", label: activeCategory.name, href: link({ category: undefined }) });
+  }
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    const label =
+      minPrice !== undefined && maxPrice !== undefined
+        ? `${formatRupiah(minPrice)} – ${formatRupiah(maxPrice)}`
+        : minPrice !== undefined
+          ? `Mulai ${formatRupiah(minPrice)}`
+          : `Sampai ${formatRupiah(maxPrice!)}`;
+    activeFilters.push({ key: "price", label, href: link({ minPrice: undefined, maxPrice: undefined }) });
+  }
+  if (startDate && endDate) {
+    activeFilters.push({
+      key: "dates",
+      label: formatDateRange(startDate, endDate, { short: true }),
+      href: link({ startDate: undefined, endDate: undefined }),
+    });
+  }
+
   const title = q ? `Hasil untuk "${q}"` : activeCategory ? activeCategory.name : "Semua barang";
 
   return (
-    <div className="container mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 md:flex-row">
-      {/* Filter */}
-      <aside className="w-full shrink-0 space-y-8 md:w-64">
-        <form action="/search" method="get" className="space-y-5">
-          {activeCategory && <input type="hidden" name="category" value={activeCategory.slug} />}
-          {current.sort && <input type="hidden" name="sort" value={current.sort} />}
+    <div className="shell pb-8 pt-4 md:pt-8">
+      <header className="mb-6 md:mb-8">
+        <p className="text-eyebrow text-brand">Jelajahi</p>
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+          <h1 className="text-title max-w-4xl text-ink">{title}</h1>
+          <p className="pb-1 text-sm text-muted">{result.total} barang</p>
+        </div>
+      </header>
 
-          <div className="space-y-1.5">
-            <label htmlFor="q" className="text-sm font-semibold text-slate-900">
-              Kata kunci
-            </label>
-            <input id="q" name="q" defaultValue={q ?? ""} placeholder="Contoh: kamera" className={inputClass} />
-          </div>
+      <div className="grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-10 2xl:grid-cols-[20rem_minmax(0,1fr)] 2xl:gap-14">
+        {/* Filter: laci di HP/tablet, sidebar menempel di laptop */}
+        <aside className="lg:sticky lg:top-28 lg:self-start">
+          <FilterDrawer activeCount={activeFilters.filter((f) => f.key !== "category").length}>
+            <form action="/search" method="get" className="space-y-6">
+              {activeCategory && <input type="hidden" name="category" value={activeCategory.slug} />}
+              {current.sort && <input type="hidden" name="sort" value={current.sort} />}
 
-          <fieldset className="space-y-1.5">
-            <legend className="text-sm font-semibold text-slate-900">Harga per hari (Rp)</legend>
-            <div className="flex items-center gap-2">
-              <input
-                name="minPrice"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                defaultValue={minPrice ?? ""}
-                placeholder="Min"
-                aria-label="Harga minimum"
-                className={inputClass}
-              />
-              <span className="text-slate-400">-</span>
-              <input
-                name="maxPrice"
-                type="number"
-                min={0}
-                inputMode="numeric"
-                defaultValue={maxPrice ?? ""}
-                placeholder="Maks"
-                aria-label="Harga maksimum"
-                className={inputClass}
-              />
-            </div>
-          </fieldset>
+              <div className="space-y-2">
+                <label htmlFor="q" className="text-sm font-semibold text-ink">
+                  Kata kunci
+                </label>
+                <input id="q" name="q" defaultValue={q ?? ""} placeholder="Contoh: kamera" className={fieldClass} />
+              </div>
 
-          <fieldset className="space-y-1.5">
-            <legend className="text-sm font-semibold text-slate-900">Tanggal sewa</legend>
-            <input
-              name="startDate"
-              type="date"
-              min={todayKey()}
-              defaultValue={startDate ?? ""}
-              aria-label="Tanggal mulai"
-              className={inputClass}
-            />
-            <input
-              name="endDate"
-              type="date"
-              min={todayKey()}
-              defaultValue={endDate ?? ""}
-              aria-label="Tanggal selesai"
-              className={inputClass}
-            />
-            <p className="text-xs text-slate-500">Isi kedua tanggal untuk hanya melihat barang yang tersedia.</p>
-          </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-ink">Harga per hari (Rp)</legend>
+                <div className="flex items-center gap-2">
+                  <input
+                    name="minPrice"
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    defaultValue={minPrice ?? ""}
+                    placeholder="Min"
+                    aria-label="Harga minimum"
+                    className={fieldClass}
+                  />
+                  <span className="text-muted" aria-hidden>
+                    –
+                  </span>
+                  <input
+                    name="maxPrice"
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    defaultValue={maxPrice ?? ""}
+                    placeholder="Maks"
+                    aria-label="Harga maksimum"
+                    className={fieldClass}
+                  />
+                </div>
+              </fieldset>
 
-          <Button type="submit" className="w-full">
-            Terapkan
-          </Button>
-        </form>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-ink">Tanggal sewa</legend>
+                <input
+                  name="startDate"
+                  type="date"
+                  min={todayKey()}
+                  defaultValue={startDate ?? ""}
+                  aria-label="Tanggal mulai"
+                  className={fieldClass}
+                />
+                <input
+                  name="endDate"
+                  type="date"
+                  min={todayKey()}
+                  defaultValue={endDate ?? ""}
+                  aria-label="Tanggal selesai"
+                  className={fieldClass}
+                />
+                <p className="text-xs leading-relaxed text-muted">
+                  Isi kedua tanggal untuk hanya melihat barang yang tersedia.
+                </p>
+              </fieldset>
 
-        {categories.length > 0 && (
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">Kategori</h2>
-            <ul className="space-y-2">
-              <li>
+              <Button type="submit" size="lg" className="w-full">
+                Terapkan filter
+              </Button>
+            </form>
+          </FilterDrawer>
+        </aside>
+
+        {/* Hasil */}
+        <main className="min-w-0">
+          <div className="space-y-4">
+            {/* Kategori: chip yang bisa digeser */}
+            {categories.length > 0 && (
+              <nav aria-label="Kategori" className="hide-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
                 <Link
                   href={link({ category: undefined, page: undefined })}
-                  className={`text-sm ${!activeCategory ? "font-bold text-slate-900" : "text-slate-600 hover:text-slate-900"}`}
+                  aria-current={!activeCategory ? "true" : undefined}
+                  className={cn(
+                    chipBase,
+                    !activeCategory ? "bg-ink text-canvas" : "bg-surface text-ink ring-1 ring-line hover:ring-ink",
+                  )}
                 >
-                  Semua kategori
+                  Semua
                 </Link>
-              </li>
-              {categories.map((c) => (
-                <li key={c.id}>
+                {categories.map((c) => (
                   <Link
+                    key={c.id}
                     href={link({ category: c.slug, page: undefined })}
-                    className={`text-sm ${activeCategory?.id === c.id ? "font-bold text-slate-900" : "text-slate-600 hover:text-slate-900"}`}
+                    aria-current={activeCategory?.id === c.id ? "true" : undefined}
+                    className={cn(
+                      chipBase,
+                      activeCategory?.id === c.id
+                        ? "bg-ink text-canvas"
+                        : "bg-surface text-ink ring-1 ring-line hover:ring-ink",
+                    )}
                   >
                     {c.name}
                   </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </aside>
-
-      {/* Hasil */}
-      <main className="min-w-0 flex-1">
-        <div className="mb-6 space-y-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
-            <p className="text-sm text-slate-500">{result.total} barang</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-slate-500">Urutkan:</span>
-            {SORTS.map((s) => (
-              <Link
-                key={s.value}
-                href={link({ sort: s.value === "popular" ? undefined : s.value, page: undefined })}
-                aria-current={sort === s.value ? "true" : undefined}
-                className={`rounded-lg px-3 py-1 text-sm font-medium transition-colors ${sort === s.value ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-              >
-                {s.label}
-              </Link>
-            ))}
-            {hasFilters && (
-              <Link href="/search" className="ml-auto text-sm font-medium text-slate-700 underline">
-                Hapus semua filter
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {result.items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-20 text-center">
-            <SearchX className="mb-3 h-8 w-8 text-slate-400" aria-hidden />
-            <p className="text-lg font-semibold text-slate-900">Barang belum ditemukan</p>
-            <p className="mt-1 max-w-sm text-sm text-slate-500">
-              Coba kata kunci yang lebih umum, ubah rentang harga atau tanggal, atau hapus filter.
-            </p>
-            {hasFilters && (
-              <Link
-                href="/search"
-                className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                Hapus semua filter
-              </Link>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,16.5rem),1fr))] md:gap-6">
-              {result.items.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-
-            {result.totalPages > 1 && (
-              <nav aria-label="Halaman hasil" className="mt-8 flex items-center justify-center gap-4 text-sm">
-                {page > 1 ? (
-                  <Link
-                    href={link({ page: String(page - 1) })}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-50"
-                  >
-                    <ChevronLeft className="h-4 w-4" aria-hidden />
-                    Sebelumnya
-                  </Link>
-                ) : (
-                  <span />
-                )}
-                <span className="text-slate-600">
-                  Halaman {page} dari {result.totalPages}
-                </span>
-                {page < result.totalPages ? (
-                  <Link
-                    href={link({ page: String(page + 1) })}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-50"
-                  >
-                    Berikutnya
-                    <ChevronRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                ) : (
-                  <span />
-                )}
+                ))}
               </nav>
             )}
-          </>
-        )}
-      </main>
+
+            {/* Urutan */}
+            <nav
+              aria-label="Urutkan"
+              className="hide-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 md:mx-0 md:px-0"
+            >
+              <span className="shrink-0 pr-1 text-sm text-muted">Urutkan</span>
+              {SORTS.map((s) => (
+                <Link
+                  key={s.value}
+                  href={link({ sort: s.value === "popular" ? undefined : s.value, page: undefined })}
+                  aria-current={sort === s.value ? "true" : undefined}
+                  className={cn(
+                    "inline-flex h-10 shrink-0 items-center rounded-full px-4 text-sm font-medium transition duration-300",
+                    sort === s.value ? "bg-brand-soft text-brand" : "text-muted hover:bg-ink/5 hover:text-ink",
+                  )}
+                >
+                  {s.label}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Filter aktif */}
+            {activeFilters.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2" aria-label="Filter aktif">
+                {activeFilters.map((f) => (
+                  <Link
+                    key={f.key}
+                    href={f.href}
+                    aria-label={`Hapus filter ${f.label}`}
+                    className="group inline-flex h-9 items-center gap-1.5 rounded-full bg-signal pl-4 pr-3 text-sm font-semibold text-ink transition active:scale-95"
+                  >
+                    {f.label}
+                    <X className="size-3.5 transition-transform duration-300 group-hover:rotate-90" aria-hidden />
+                  </Link>
+                ))}
+                {activeFilters.length > 1 && (
+                  <Link href="/search" className="px-2 text-sm font-medium text-muted underline underline-offset-4 hover:text-ink">
+                    Hapus semua
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 md:mt-8">
+            {result.items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-line bg-surface/60 px-5 py-20 text-center">
+                <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
+                  <SearchX className="size-7" aria-hidden />
+                </span>
+                <p className="mt-5 font-display text-2xl font-bold tracking-tight text-ink">Barang belum ditemukan</p>
+                <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
+                  Coba kata kunci yang lebih umum, ubah rentang harga atau tanggal, atau hapus filter.
+                </p>
+                {activeFilters.length > 0 && (
+                  <Link
+                    href="/search"
+                    className="mt-6 inline-flex h-12 items-center rounded-full bg-ink px-6 text-sm font-semibold text-canvas transition hover:bg-ink/85 active:scale-95"
+                  >
+                    Hapus semua filter
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,16.5rem),1fr))] md:gap-6">
+                  {result.items.map((product, i) => (
+                    <ProductCard key={product.id} product={product} priority={i < 2} />
+                  ))}
+                </div>
+
+                {result.totalPages > 1 && (
+                  <nav aria-label="Halaman hasil" className="mt-10 flex items-center justify-between gap-3 text-sm">
+                    {page > 1 ? (
+                      <Link
+                        href={link({ page: String(page - 1) })}
+                        className="inline-flex h-12 items-center gap-2 rounded-full border border-line bg-surface px-5 font-semibold text-ink transition hover:border-ink active:scale-95"
+                      >
+                        <ArrowLeft className="size-4" aria-hidden />
+                        Sebelumnya
+                      </Link>
+                    ) : (
+                      <span className="w-28" />
+                    )}
+                    <span className="text-muted">
+                      Halaman <span className="font-semibold text-ink">{page}</span> dari {result.totalPages}
+                    </span>
+                    {page < result.totalPages ? (
+                      <Link
+                        href={link({ page: String(page + 1) })}
+                        className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-5 font-semibold text-canvas transition hover:bg-ink/85 active:scale-95"
+                      >
+                        Berikutnya
+                        <ArrowRight className="size-4" aria-hidden />
+                      </Link>
+                    ) : (
+                      <span className="w-28" />
+                    )}
+                  </nav>
+                )}
+              </>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
