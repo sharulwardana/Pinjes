@@ -44,6 +44,11 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Tutup menu saat rute berpindah
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   // Menu penuh layar: kunci scroll dan tutup dengan Escape.
   useEffect(() => {
     if (!open) return;
