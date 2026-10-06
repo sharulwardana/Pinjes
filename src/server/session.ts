@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { RoleKey } from "@prisma/client";
 import { env } from "./env";
+import { clientIpFromHeaders } from "./client-ip";
 import { getUserBySessionToken, type RequestMeta, type SessionUser } from "./services/auth";
 
 export const SESSION_COOKIE = "rs_session";
@@ -36,8 +37,8 @@ export async function clearSessionCookie() {
 
 export async function getRequestMeta(): Promise<RequestMeta> {
   const h = await headers();
-  const forwarded = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return { ip: forwarded || h.get("x-real-ip") || null, userAgent: h.get("user-agent") };
+  const ip = clientIpFromHeaders(h.get("x-forwarded-for"), h.get("x-real-ip"), env.trustedProxyHops);
+  return { ip, userAgent: h.get("user-agent") };
 }
 
 export function homeForRole(role: RoleKey) {

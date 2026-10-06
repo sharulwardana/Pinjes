@@ -12,6 +12,14 @@ export const env = {
   get appUrl() {
     return (process.env.APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
   },
+  /**
+   * Jumlah reverse proxy tepercaya di depan app (Nginx, Cloudflare, Vercel, dll).
+   * Dipakai untuk membaca IP klien dari X-Forwarded-For. 0 = abaikan header tersebut.
+   */
+  get trustedProxyHops() {
+    const n = Number(process.env.TRUSTED_PROXY_HOPS ?? "1");
+    return Number.isInteger(n) && n >= 0 ? n : 1;
+  },
   get uploadDir() {
     return path.resolve(process.cwd(), process.env.UPLOAD_DIR ?? "storage/uploads");
   },
