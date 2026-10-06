@@ -1,54 +1,30 @@
 import { requireRole } from "@/server/session";
-import Link from "next/link";
+import { db } from "@/server/db";
+import { ownStoreId } from "@/server/policies";
+import { StoreNav } from "@/components/store/store-nav";
 
-export default async function StoreDashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  await requireRole(["STORE_OWNER"]);
+export default async function StoreDashboardLayout({ children }: { children: React.ReactNode }) {
+  const user = await requireRole(["STORE_OWNER"]);
+  const storeId = ownStoreId(user);
+
+  const [store, awaitingCheck] = await Promise.all([
+    db.store.findUnique({ where: { id: storeId }, select: { name: true } }),
+    db.booking.count({ where: { storeId, status: "PAYMENT_SUBMITTED" } }),
+  ]);
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8 flex flex-col md:flex-row gap-8">
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 shrink-0">
-        <div className="sticky top-24 space-y-1">
-          <h2 className="px-4 text-lg font-semibold tracking-tight text-zinc-900 mb-4">
-            Kelola Toko
-          </h2>
-          <nav className="flex flex-col space-y-1">
-            <Link
-              href="/dashboard/store"
-              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-zinc-100 text-zinc-900"
-            >
-              Ringkasan
-            </Link>
-            <Link
-              href="/dashboard/store/products"
-              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-zinc-100 text-zinc-600"
-            >
-              Daftar Barang
-            </Link>
-            <Link
-              href="/dashboard/store/orders"
-              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-zinc-100 text-zinc-600"
-            >
-              Pesanan Masuk
-            </Link>
-            <Link
-              href="/dashboard/store/settings"
-              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-zinc-100 text-zinc-600"
-            >
-              Pengaturan Toko
-            </Link>
-          </nav>
+    <div className="shell flex flex-col gap-6 py-6 md:flex-row md:gap-10 md:py-10">
+      <aside className="shrink-0 md:w-60">
+        <div className="md:sticky md:top-24">
+          <p className="text-eyebrow mb-1 hidden text-muted md:block">Kelola toko</p>
+          <p className="mb-4 hidden truncate font-display text-xl font-bold tracking-tight md:block">
+            {store?.name ?? "Tokoku"}
+          </p>
+          <StoreNav awaitingCheck={awaitingCheck} />
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 min-w-0">
-        {children}
-      </main>
+      <main className="min-w-0 flex-1">{children}</main>
     </div>
   );
 }

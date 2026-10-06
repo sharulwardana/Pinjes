@@ -1,0 +1,835 @@
+diff --git a/src/app/dashboard/store/layout.tsx b/src/app/dashboard/store/layout.tsx
+index 4ed47d7..3bdee09 100644
+--- a/src/app/dashboard/store/layout.tsx
++++ b/src/app/dashboard/store/layout.tsx
+@@ -1,54 +1,30 @@
+ import { requireRole } from "@/server/session";
+-import Link from "next/link";
++import { db } from "@/server/db";
++import { ownStoreId } from "@/server/policies";
++import { StoreNav } from "@/components/store/store-nav";
+ 
+-export default async function StoreDashboardLayout({
+-  children,
+-}: {
+-  children: React.ReactNode;
+-}) {
+-  await requireRole(["STORE_OWNER"]);
++export default async function StoreDashboardLayout({ children }: { children: React.ReactNode }) {
++  const user = await requireRole(["STORE_OWNER"]);
++  const storeId = ownStoreId(user);
++
++  const [store, awaitingCheck] = await Promise.all([
++    db.store.findUnique({ where: { id: storeId }, select: { name: true } }),
++    db.booking.count({ where: { storeId, status: "PAYMENT_SUBMITTED" } }),
++  ]);
+ 
+   return (
+-    <div className="container mx-auto max-w-7xl px-4 py-8 flex flex-col md:flex-row gap-8">
+-      {/* Sidebar Navigation */}
+-      <aside className="w-full md:w-64 shrink-0">
+-        <div className="sticky top-24 space-y-1">
+-          <h2 className="px-4 text-lg font-semibold tracking-tight text-zinc-900 mb-4">
+-            Kelola Toko
+-          </h2>
+-          <nav className="flex flex-col space-y-1">
+-            <Link
+-              href="/dashboard/store"
+-              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-zinc-100 text-zinc-900"
+-            >
+-              Ringkasan
+-            </Link>
+-            <Link
+-              href="/dashboard/store/products"
+-              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-zinc-100 text-zinc-600"
+-            >
+-              Daftar Barang
+-            </Link>
+-            <Link
+-              href="/dashboard/store/orders"
+-              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-zinc-100 text-zinc-600"
+-            >
+-              Pesanan Masuk
+-            </Link>
+-            <Link
+-              href="/dashboard/store/settings"
+-              className="px-4 py-2 text-sm font-medium rounded-md hover:bg-zinc-100 text-zinc-600"
+-            >
+-              Pengaturan Toko
+-            </Link>
+-          </nav>
++    <div className="shell flex flex-col gap-6 py-6 md:flex-row md:gap-10 md:py-10">
++      <aside className="shrink-0 md:w-60">
++        <div className="md:sticky md:top-24">
++          <p className="text-eyebrow mb-1 hidden text-muted md:block">Kelola toko</p>
++          <p className="mb-4 hidden truncate font-display text-xl font-bold tracking-tight md:block">
++            {store?.name ?? "Tokoku"}
++          </p>
++          <StoreNav awaitingCheck={awaitingCheck} />
+         </div>
+       </aside>
+ 
+-      {/* Main Content */}
+-      <main className="flex-1 min-w-0">
+-        {children}
+-      </main>
++      <main className="min-w-0 flex-1">{children}</main>
+     </div>
+   );
+ }
+diff --git a/src/app/dashboard/store/orders/page.tsx b/src/app/dashboard/store/orders/page.tsx
+index 1c0953d..f311227 100644
+--- a/src/app/dashboard/store/orders/page.tsx
++++ b/src/app/dashboard/store/orders/page.tsx
+@@ -1,78 +1,144 @@
++import Link from "next/link";
++import { ArrowUpRight, CalendarDays, ImageOff, Inbox } from "lucide-react";
+ import { requireRole } from "@/server/session";
+ import { db } from "@/server/db";
+-import { Badge } from "@/components/ui/badge";
+-import Link from "next/link";
+-import { Button } from "@/components/ui/button";
++import { ownStoreId } from "@/server/policies";
++import { formatDateRange, formatRelative, formatRupiah } from "@/lib/format";
++import { FINISHED_STATUSES, type BookingStatus } from "@/features/booking/status";
++import { StatusPill } from "@/components/status-pill";
++import { ProductImage } from "@/components/product-image";
++import { cn } from "@/lib/utils";
++
++export const metadata = { title: "Pesanan Masuk | PinjeS" };
++
++/** Status yang menunggu tindakan toko. */
++const ACTION_STATUSES: BookingStatus[] = ["PAYMENT_SUBMITTED", "PAYMENT_CONFIRMED", "READY_FOR_PICKUP", "RETURNED"];
++
++const ACTION_HINT: Partial<Record<BookingStatus, string>> = {
++  PAYMENT_SUBMITTED: "Periksa bukti pembayaran",
++  PAYMENT_CONFIRMED: "Siapkan barang",
++  READY_FOR_PICKUP: "Serahkan saat pelanggan datang",
++  RETURNED: "Selesaikan pesanan",
++};
+ 
+ export default async function StoreOrdersPage() {
+   const user = await requireRole(["STORE_OWNER"]);
+-  
++  const storeId = ownStoreId(user);
++
+   const bookings = await db.booking.findMany({
+-    where: { store: { ownerId: user.id } },
++    where: { storeId },
+     orderBy: { createdAt: "desc" },
+     include: {
+-      customer: { select: { name: true, phone: true } },
+-      items: true,
+-      payment: true,
+-    }
++      customer: { select: { name: true } },
++      items: {
++        include: {
++          product: { select: { images: { take: 1, orderBy: { sortOrder: "asc" }, select: { path: true } } } },
++        },
++      },
++    },
+   });
+ 
++  const needAction = bookings.filter((b) => ACTION_STATUSES.includes(b.status));
++  const running = bookings.filter((b) => !ACTION_STATUSES.includes(b.status) && !FINISHED_STATUSES.includes(b.status));
++  const history = bookings.filter((b) => FINISHED_STATUSES.includes(b.status));
++
++  type Row = (typeof bookings)[number];
++
++  function OrderCard({ booking }: { booking: Row }) {
++    const first = booking.items[0];
++    const photo = first?.product.images[0]?.path;
++    const more = booking.items.length - 1;
++    const hint = ACTION_HINT[booking.status];
++
++    return (
++      <Link
++        href={`/dashboard/store/orders/${booking.code}`}
++        className={cn(
++          "group flex gap-4 rounded-[1.75rem] p-3 ring-1 transition duration-500 ease-out-expo hover:-translate-y-1 hover:shadow-[0_24px_48px_-28px_rgb(0_0_0/0.3)] sm:p-4",
++          hint ? "bg-surface ring-2 ring-signal" : "bg-surface ring-line",
++        )}
++      >
++        <div className="size-20 shrink-0 overflow-hidden rounded-2xl bg-line/60 sm:size-24">
++          {photo ? (
++            <ProductImage path={photo} alt={first?.productName ?? ""} className="size-full object-cover" />
++          ) : (
++            <div className="grid size-full place-items-center text-muted">
++              <ImageOff className="size-6" aria-label="Belum ada foto" />
++            </div>
++          )}
++        </div>
++
++        <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
++          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
++            <StatusPill status={booking.status} />
++            <span className="text-xs font-semibold text-muted">#{booking.code}</span>
++          </div>
++
++          <div className="min-w-0">
++            <p className="truncate font-semibold">
++              {first?.productName ?? "Pesanan"}
++              {more > 0 && <span className="font-normal text-muted"> +{more} barang</span>}
++            </p>
++            <p className="truncate text-sm text-muted">{booking.customer.name}</p>
++          </div>
++
++          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
++            <span className="inline-flex items-center gap-1.5 text-muted">
++              <CalendarDays className="size-4" aria-hidden />
++              {formatDateRange(booking.startDate, booking.endDate, { short: true })}
++            </span>
++            <span className="font-display text-lg font-bold tabular-nums">{formatRupiah(booking.total)}</span>
++          </div>
++
++          {hint ? (
++            <p className="inline-flex items-center gap-1 text-xs font-semibold text-brand">
++              {hint}
++              <ArrowUpRight className="size-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />
++            </p>
++          ) : (
++            <p className="text-xs text-muted">Dibuat {formatRelative(booking.createdAt)}</p>
++          )}
++        </div>
++      </Link>
++    );
++  }
++
++  function Section({ title, count, rows }: { title: string; count: number; rows: Row[] }) {
++    if (rows.length === 0) return null;
++    return (
++      <section className="space-y-3">
++        <h2 className="flex items-center gap-2 font-display text-xl font-bold tracking-tight">
++          {title}
++          <span className="rounded-full bg-line/70 px-2.5 py-0.5 font-sans text-xs font-semibold text-muted">{count}</span>
++        </h2>
++        <div className="grid gap-3 lg:grid-cols-2">
++          {rows.map((b) => (
++            <OrderCard key={b.id} booking={b} />
++          ))}
++        </div>
++      </section>
++    );
++  }
++
+   return (
+-    <div className="space-y-6">
+-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Pesanan Masuk</h1>
+-      
++    <div className="space-y-8">
++      <div>
++        <p className="text-eyebrow text-muted">Kelola toko</p>
++        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">Pesanan masuk</h1>
++      </div>
++
+       {bookings.length === 0 ? (
+-        <div className="rounded-xl border border-dashed border-zinc-200 py-32 text-center">
+-          <p className="text-lg font-medium text-zinc-900">Belum ada pesanan</p>
+-          <p className="mt-1 text-sm text-zinc-500">Belum ada pelanggan yang menyewa barang Anda.</p>
++        <div className="grid place-items-center gap-2 rounded-[1.75rem] border border-dashed border-line px-6 py-24 text-center">
++          <Inbox className="size-8 text-muted" aria-hidden />
++          <p className="text-lg font-semibold">Belum ada pesanan</p>
++          <p className="max-w-sm text-sm text-muted">Pesanan dari pelanggan akan muncul di sini begitu ada yang menyewa barangmu.</p>
+         </div>
+       ) : (
+-        <div className="space-y-4">
+-          {bookings.map((booking) => (
+-            <div key={booking.id} className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+-                <div>
+-                  <div className="flex items-center gap-3">
+-                    <h3 className="font-semibold text-lg">#{booking.code}</h3>
+-                    <Badge variant={booking.status === "PENDING_PAYMENT" ? "destructive" : "default"}>
+-                      {booking.status.replace("_", " ")}
+-                    </Badge>
+-                  </div>
+-                  <p className="text-sm text-zinc-500 mt-1">Pemesan: {booking.customer.name}</p>
+-                </div>
+-                <div className="text-right">
+-                  <p className="text-xs text-zinc-500">Total Harga</p>
+-                  <p className="font-bold text-lg text-zinc-900">Rp {booking.total.toLocaleString("id-ID")}</p>
+-                </div>
+-              </div>
+-
+-              <div className="grid md:grid-cols-2 gap-4 text-sm text-zinc-600 bg-zinc-50 p-4 rounded-lg">
+-                <div>
+-                  <p className="font-medium text-zinc-900 mb-1">Barang disewa:</p>
+-                  <ul className="list-disc list-inside">
+-                    {booking.items.map(item => (
+-                      <li key={item.id}>{item.productName} ({item.days} hari)</li>
+-                    ))}
+-                  </ul>
+-                </div>
+-                <div>
+-                  <p className="font-medium text-zinc-900 mb-1">Jadwal:</p>
+-                  <p>{booking.startDate.toLocaleDateString("id-ID")} s/d {booking.endDate.toLocaleDateString("id-ID")}</p>
+-                </div>
+-              </div>
+-
+-              <div className="mt-4 flex justify-end gap-2">
+-                {/* Normally we'd use Client Components for these actions to call mutations. 
+-                    For now we'll put dummy buttons or Links to a detail page. */}
+-                <Button variant="outline" size="sm" asChild>
+-                  <Link href={`/dashboard/store/orders/${booking.code}`}>
+-                    Kelola Pesanan
+-                  </Link>
+-                </Button>
+-              </div>
+-            </div>
+-          ))}
+-        </div>
++        <>
++          <Section title="Perlu tindakan" count={needAction.length} rows={needAction} />
++          <Section title="Sedang berjalan" count={running.length} rows={running} />
++          <Section title="Riwayat" count={history.length} rows={history} />
++        </>
+       )}
+     </div>
+   );
+diff --git a/src/app/dashboard/store/page.tsx b/src/app/dashboard/store/page.tsx
+index 4f40876..5bdc7e3 100644
+--- a/src/app/dashboard/store/page.tsx
++++ b/src/app/dashboard/store/page.tsx
+@@ -1,12 +1,15 @@
+ import Link from "next/link";
+ import { notFound } from "next/navigation";
++import { AlertCircle, ArrowUpRight, Boxes, ClipboardList, Wallet } from "lucide-react";
+ import { requireRole } from "@/server/session";
+ import { db } from "@/server/db";
+ import { ownStoreId } from "@/server/policies";
+ import { getSettings } from "@/server/settings";
+ import { formatRupiah } from "@/lib/format";
+-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+ import { SubmitStoreBtn } from "@/components/submit-store-btn";
++import { CountUp } from "@/components/motion/count-up";
++import { Reveal } from "@/components/motion/reveal";
++import { cn } from "@/lib/utils";
+ 
+ const STORE_STATUS_TEXT: Record<string, string> = {
+   DRAFT: "Tokomu masih berstatus draf.",
+@@ -15,9 +18,67 @@ const STORE_STATUS_TEXT: Record<string, string> = {
+   SUSPENDED: "Tokomu sedang dinonaktifkan.",
+ };
+ 
+-function Alert({ children }: { children: React.ReactNode }) {
++function Alert({ children, urgent = false }: { children: React.ReactNode; urgent?: boolean }) {
+   return (
+-    <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">{children}</div>
++    <div
++      className={cn(
++        "flex gap-3 rounded-2xl p-4 text-sm ring-1",
++        urgent ? "bg-signal/40 text-ink ring-signal" : "bg-amber-50 text-amber-950 ring-amber-200",
++      )}
++    >
++      <AlertCircle className="mt-0.5 size-5 shrink-0" aria-hidden />
++      <div className="min-w-0 flex-1">{children}</div>
++    </div>
++  );
++}
++
++function Stat({
++  icon: Icon,
++  label,
++  hint,
++  href,
++  children,
++  highlight = false,
++}: {
++  icon: typeof Boxes;
++  label: string;
++  hint: string;
++  href?: string;
++  children: React.ReactNode;
++  highlight?: boolean;
++}) {
++  const body = (
++    <div
++      className={cn(
++        "group flex h-full flex-col justify-between gap-6 rounded-[1.75rem] p-5 ring-1 transition duration-500 ease-out-expo",
++        highlight ? "bg-brand text-accent-foreground ring-brand" : "bg-surface ring-line",
++        href && "hover:-translate-y-1 hover:shadow-[0_24px_48px_-28px_rgb(0_0_0/0.35)]",
++      )}
++    >
++      <div className="flex items-center justify-between">
++        <span
++          className={cn(
++            "grid size-10 place-items-center rounded-full",
++            highlight ? "bg-signal text-ink" : "bg-brand-soft text-brand",
++          )}
++        >
++          <Icon className="size-5" aria-hidden />
++        </span>
++        {href && <ArrowUpRight className="size-5 opacity-50 transition group-hover:opacity-100" aria-hidden />}
++      </div>
++      <div>
++        <p className={cn("text-sm font-semibold", highlight ? "text-accent-foreground/80" : "text-muted")}>{label}</p>
++        <p className="mt-1 font-display text-4xl font-bold tracking-tight tabular-nums">{children}</p>
++        <p className={cn("mt-2 text-xs leading-relaxed", highlight ? "text-accent-foreground/70" : "text-muted")}>{hint}</p>
++      </div>
++    </div>
++  );
++  return href ? (
++    <Link href={href} className="block h-full rounded-[1.75rem]">
++      {body}
++    </Link>
++  ) : (
++    body
+   );
+ }
+ 
+@@ -25,14 +86,10 @@ export default async function StoreDashboardPage() {
+   const user = await requireRole(["STORE_OWNER"]);
+   const storeId = ownStoreId(user);
+ 
+-  const [store, settings, activeOrdersCount, awaitingCheckCount] = await Promise.all([
++  const [store, settings, activeOrdersCount, awaitingCheckCount, toHandleCount] = await Promise.all([
+     db.store.findUnique({
+       where: { id: storeId },
+-      include: {
+-        _count: {
+-          select: { products: { where: { status: "ACTIVE", deletedAt: null } } },
+-        },
+-      },
++      include: { _count: { select: { products: { where: { status: "ACTIVE", deletedAt: null } } } } },
+     }),
+     getSettings(),
+     db.booking.count({
+@@ -42,6 +99,7 @@ export default async function StoreDashboardPage() {
+       },
+     }),
+     db.booking.count({ where: { storeId, status: "PAYMENT_SUBMITTED" } }),
++    db.booking.count({ where: { storeId, status: { in: ["PAYMENT_CONFIRMED", "READY_FOR_PICKUP", "RETURNED"] } } }),
+   ]);
+ 
+   if (!store) notFound();
+@@ -49,15 +107,19 @@ export default async function StoreDashboardPage() {
+   const hasPaymentInfo = Boolean(store.bankAccountNumber) || Boolean(store.qrisImagePath);
+   const balanceBlocksBookings = store.depositBalance <= settings.service_fee;
+   const balanceLow = !balanceBlocksBookings && store.depositBalance <= settings.low_balance_threshold;
++  const needAction = awaitingCheckCount + toHandleCount;
+ 
+   return (
+-    <div className="space-y-6">
+-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Selamat datang di {store.name}</h1>
++    <div className="space-y-8">
++      <Reveal immediate y={16}>
++        <p className="text-eyebrow text-muted">Ringkasan</p>
++        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-balance md:text-4xl">{store.name}</h1>
++      </Reveal>
+ 
+       <div className="space-y-3">
+         {store.status !== "ACTIVE" && (
+           <Alert>
+-            <p className="font-medium">{STORE_STATUS_TEXT[store.status] ?? "Tokomu belum aktif."}</p>
++            <p className="font-semibold">{STORE_STATUS_TEXT[store.status] ?? "Tokomu belum aktif."}</p>
+             <p className="mt-1">Selama belum aktif, barangmu tidak tampil di pencarian dan tidak bisa dipesan.</p>
+             {store.rejectionReason && <p className="mt-1">Alasan: {store.rejectionReason}</p>}
+             {(store.status === "DRAFT" || store.status === "REJECTED") && (
+@@ -71,10 +133,10 @@ export default async function StoreDashboardPage() {
+ 
+         {!hasPaymentInfo && (
+           <Alert>
+-            <p className="font-medium">Rekening atau QRIS belum diisi.</p>
++            <p className="font-semibold">Rekening atau QRIS belum diisi.</p>
+             <p className="mt-1">
+               Pelanggan tidak bisa membayar pesanan sampai kamu mengisinya.{" "}
+-              <Link href="/dashboard/store/settings" className="font-medium underline">
++              <Link href="/dashboard/store/settings" className="font-semibold underline underline-offset-4">
+                 Isi sekarang
+               </Link>
+             </p>
+@@ -83,10 +145,10 @@ export default async function StoreDashboardPage() {
+ 
+         {balanceBlocksBookings && (
+           <Alert>
+-            <p className="font-medium">Saldo deposit tidak cukup untuk menerima pesanan baru.</p>
++            <p className="font-semibold">Saldo deposit tidak cukup untuk menerima pesanan baru.</p>
+             <p className="mt-1">
+               Biaya layanan {formatRupiah(settings.service_fee)} per pesanan harus lebih kecil dari saldo.{" "}
+-              <Link href="/dashboard/store/deposit" className="font-medium underline">
++              <Link href="/dashboard/store/deposit" className="font-semibold underline underline-offset-4">
+                 Top-up deposit
+               </Link>
+             </p>
+@@ -95,9 +157,9 @@ export default async function StoreDashboardPage() {
+ 
+         {balanceLow && (
+           <Alert>
+-            <p className="font-medium">Saldo deposit hampir habis.</p>
++            <p className="font-semibold">Saldo deposit hampir habis.</p>
+             <p className="mt-1">
+-              <Link href="/dashboard/store/deposit" className="font-medium underline">
++              <Link href="/dashboard/store/deposit" className="font-semibold underline underline-offset-4">
+                 Top-up deposit
+               </Link>{" "}
+               supaya tokomu tetap bisa menerima pesanan.
+@@ -106,10 +168,10 @@ export default async function StoreDashboardPage() {
+         )}
+ 
+         {awaitingCheckCount > 0 && (
+-          <Alert>
+-            <p className="font-medium">{awaitingCheckCount} bukti pembayaran menunggu kamu periksa.</p>
++          <Alert urgent>
++            <p className="font-semibold">{awaitingCheckCount} bukti pembayaran menunggu kamu periksa.</p>
+             <p className="mt-1">
+-              <Link href="/dashboard/store/orders" className="font-medium underline">
++              <Link href="/dashboard/store/orders" className="font-semibold underline underline-offset-4">
+                 Lihat pesanan
+               </Link>
+             </p>
+@@ -117,37 +179,33 @@ export default async function StoreDashboardPage() {
+         )}
+       </div>
+ 
+-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+-        <Card>
+-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+-            <CardTitle className="text-sm font-medium">Total barang</CardTitle>
+-          </CardHeader>
+-          <CardContent>
+-            <div className="text-2xl font-bold">{store._count.products}</div>
+-            <p className="text-xs text-zinc-500">Barang aktif</p>
+-          </CardContent>
+-        </Card>
+-        <Card>
+-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+-            <CardTitle className="text-sm font-medium">Pesanan aktif</CardTitle>
+-          </CardHeader>
+-          <CardContent>
+-            <div className="text-2xl font-bold">{activeOrdersCount}</div>
+-            <p className="text-xs text-zinc-500">Menunggu dan sedang disewa</p>
+-          </CardContent>
+-        </Card>
+-        <Card>
+-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+-            <CardTitle className="text-sm font-medium">Saldo deposit</CardTitle>
+-          </CardHeader>
+-          <CardContent>
+-            <div className="text-2xl font-bold">{formatRupiah(store.depositBalance)}</div>
+-            <p className="text-xs text-zinc-500">
+-              Untuk biaya layanan. Bukan uang sewa dan tidak bisa ditarik.
+-            </p>
+-          </CardContent>
+-        </Card>
+-      </div>
++      <Reveal delay={0.05} y={20}>
++        <div className="grid grid-cols-1 gap-4 xs:grid-cols-2 xl:grid-cols-4">
++          <Stat
++            icon={ClipboardList}
++            label="Perlu tindakan"
++            hint={needAction > 0 ? "Periksa bukti bayar, siapkan, atau selesaikan pesanan." : "Semua pesanan sudah ditangani."}
++            href="/dashboard/store/orders"
++            highlight={needAction > 0}
++          >
++            <CountUp value={needAction} />
++          </Stat>
++          <Stat icon={ClipboardList} label="Pesanan aktif" hint="Menunggu bayar sampai sedang disewa." href="/dashboard/store/orders">
++            <CountUp value={activeOrdersCount} />
++          </Stat>
++          <Stat icon={Boxes} label="Barang aktif" hint="Tampil di pencarian dan bisa dipesan." href="/dashboard/store/products">
++            <CountUp value={store._count.products} />
++          </Stat>
++          <Stat
++            icon={Wallet}
++            label="Saldo deposit"
++            hint="Untuk biaya layanan. Bukan uang sewa dan tidak bisa ditarik."
++            href="/dashboard/store/deposit"
++          >
++            Rp<CountUp value={store.depositBalance} />
++          </Stat>
++        </div>
++      </Reveal>
+     </div>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/src/app/dashboard/store/products/page.tsx b/src/app/dashboard/store/products/page.tsx
+index 4f0cab8..181adfe 100644
+--- a/src/app/dashboard/store/products/page.tsx
++++ b/src/app/dashboard/store/products/page.tsx
+@@ -1,75 +1,119 @@
++import Link from "next/link";
++import { ImageOff, Plus, Star } from "lucide-react";
+ import { requireRole } from "@/server/session";
+ import { db } from "@/server/db";
+-import Link from "next/link";
++import { ownStoreId } from "@/server/policies";
++import { formatRupiah } from "@/lib/format";
+ import { Button } from "@/components/ui/button";
+-import { Badge } from "@/components/ui/badge";
++import { ProductImage } from "@/components/product-image";
++import { cn } from "@/lib/utils";
++
++export const metadata = { title: "Daftar Barang | PinjeS" };
++
++const PRODUCT_STATUS: Record<string, { label: string; className: string }> = {
++  ACTIVE: { label: "Aktif", className: "bg-brand-soft text-brand" },
++  DRAFT: { label: "Draf", className: "bg-amber-100 text-amber-900" },
++};
+ 
+ export default async function StoreProductsPage() {
+   const user = await requireRole(["STORE_OWNER"]);
+-  
++  const storeId = ownStoreId(user);
++
+   const products = await db.product.findMany({
+-    where: { storeId: user.storeId!, status: { not: "INACTIVE" as any } },
++    where: { storeId, status: { not: "INACTIVE" }, deletedAt: null },
+     orderBy: { createdAt: "desc" },
+-    include: { images: { take: 1 } }
++    include: { images: { take: 1, orderBy: { sortOrder: "asc" }, select: { path: true } } },
+   });
+ 
+   return (
+-    <div className="space-y-6">
+-      <div className="flex items-center justify-between">
+-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Daftar Barang</h1>
+-        <Button asChild>
+-          <Link href="/dashboard/store/products/new">Tambah Barang</Link>
++    <div className="space-y-8">
++      <div className="flex flex-wrap items-end justify-between gap-4">
++        <div>
++          <p className="text-eyebrow text-muted">Kelola toko</p>
++          <h1 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">Daftar barang</h1>
++        </div>
++        <Button asChild variant="brand">
++          <Link href="/dashboard/store/products/new">
++            <Plus aria-hidden /> Tambah barang
++          </Link>
+         </Button>
+       </div>
+-      
++
+       {products.length === 0 ? (
+-        <div className="rounded-xl border border-dashed border-zinc-200 py-32 text-center">
+-          <p className="text-lg font-medium text-zinc-900">Belum ada barang</p>
+-          <p className="mt-1 text-sm text-zinc-500 mb-4">Mulai sewakan barang-barang nganggur di rumahmu.</p>
++        <div className="grid place-items-center gap-3 rounded-[1.75rem] border border-dashed border-line px-6 py-24 text-center">
++          <p className="text-lg font-semibold">Belum ada barang</p>
++          <p className="max-w-sm text-sm text-muted">Mulai sewakan barang yang jarang kamu pakai.</p>
+           <Button asChild variant="outline">
+-            <Link href="/dashboard/store/products/new">Tambah Barang Pertamamu</Link>
++            <Link href="/dashboard/store/products/new">Tambah barang pertamamu</Link>
+           </Button>
+         </div>
+       ) : (
+-        <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden shadow-sm">
+-          <table className="w-full text-sm text-left">
+-            <thead className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+-              <tr>
+-                <th className="px-6 py-3 font-medium">Barang</th>
+-                <th className="px-6 py-3 font-medium">Harga / Hari</th>
+-                <th className="px-6 py-3 font-medium">Deposit</th>
+-                <th className="px-6 py-3 font-medium">Stok</th>
+-                <th className="px-6 py-3 font-medium">Status</th>
+-              </tr>
+-            </thead>
+-            <tbody className="divide-y divide-zinc-200">
+-              {products.map(product => (
+-                <tr key={product.id} className="hover:bg-zinc-50 transition-colors">
+-                  <td className="px-6 py-4">
+-                    <div className="flex items-center gap-3">
+-                      <div className="h-10 w-10 shrink-0 rounded bg-zinc-200 overflow-hidden border border-zinc-200">
+-                        {product.images[0] && (
+-                          <img src={`/api/files/${product.images[0].path}`} alt="" className="h-full w-full object-cover" />
+-                        )}
++        <ul className="grid gap-4 xs:grid-cols-2 xl:grid-cols-3">
++          {products.map((product) => {
++            const photo = product.images[0]?.path;
++            const status = PRODUCT_STATUS[product.status] ?? { label: product.status, className: "bg-line/70 text-muted" };
++            return (
++              <li key={product.id}>
++                <Link
++                  href={`/p/${product.slug}`}
++                  className="group flex h-full flex-col rounded-[1.75rem] bg-surface p-2 ring-1 ring-line transition duration-500 ease-out-expo hover:-translate-y-1.5 hover:shadow-[0_28px_56px_-28px_rgb(0_0_0/0.3)]"
++                >
++                  <div className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] bg-line/60">
++                    {photo ? (
++                      <ProductImage
++                        path={photo}
++                        alt={product.name}
++                        className="size-full object-cover transition duration-700 ease-out-expo group-hover:scale-[1.05]"
++                      />
++                    ) : (
++                      <div className="grid size-full place-items-center text-muted">
++                        <ImageOff className="size-7" aria-label="Belum ada foto" />
+                       </div>
+-                      <Link href={`/p/${product.slug}`} className="font-medium text-zinc-900 hover:underline">
+-                        {product.name}
+-                      </Link>
+-                    </div>
+-                  </td>
+-                  <td className="px-6 py-4 font-medium">Rp {product.pricePerDay.toLocaleString("id-ID")}</td>
+-                  <td className="px-6 py-4">Rp {product.securityDeposit.toLocaleString("id-ID")}</td>
+-                  <td className="px-6 py-4">{product.stock}</td>
+-                  <td className="px-6 py-4">
+-                    <Badge variant={product.status === "ACTIVE" ? "default" : "secondary"}>
+-                      {product.status}
+-                    </Badge>
+-                  </td>
+-                </tr>
+-              ))}
+-            </tbody>
+-          </table>
+-        </div>
++                    )}
++                    <span
++                      className={cn(
++                        "absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur",
++                        status.className,
++                      )}
++                    >
++                      {status.label}
++                    </span>
++                    {product.stock <= 0 && (
++                      <span className="absolute right-3 top-3 rounded-full bg-ink/90 px-3 py-1 text-xs font-semibold text-canvas">
++                        Stok habis
++                      </span>
++                    )}
++                  </div>
++
++                  <div className="flex flex-1 flex-col gap-3 p-3">
++                    <p className="line-clamp-2 font-semibold leading-snug">{product.name}</p>
++                    <p className="font-display text-xl font-bold tabular-nums">
++                      {formatRupiah(product.pricePerDay)}
++                      <span className="font-sans text-xs font-normal text-muted"> / hari</span>
++                    </p>
++                    <dl className="mt-auto grid grid-cols-3 gap-2 border-t border-line pt-3 text-xs">
++                      <div>
++                        <dt className="text-muted">Stok</dt>
++                        <dd className="mt-0.5 font-semibold tabular-nums">{product.stock}</dd>
++                      </div>
++                      <div>
++                        <dt className="text-muted">Deposit</dt>
++                        <dd className="mt-0.5 font-semibold tabular-nums">{formatRupiah(product.securityDeposit)}</dd>
++                      </div>
++                      <div>
++                        <dt className="text-muted">Ulasan</dt>
++                        <dd className="mt-0.5 inline-flex items-center gap-1 font-semibold tabular-nums">
++                          <Star className="size-3 fill-amber-400 text-amber-400" aria-hidden />
++                          {product.ratingCount > 0 ? product.ratingAvg.toFixed(1) : "–"}
++                        </dd>
++                      </div>
++                    </dl>
++                  </div>
++                </Link>
++              </li>
++            );
++          })}
++        </ul>
+       )}
+     </div>
+   );
+diff --git a/src/components/status-pill.tsx b/src/components/status-pill.tsx
+new file mode 100644
+index 0000000..8eae0a8
+--- /dev/null
++++ b/src/components/status-pill.tsx
+@@ -0,0 +1,28 @@
++import { BOOKING_STATUS_META, type BookingStatus, type Tone } from "@/features/booking/status";
++import { cn } from "@/lib/utils";
++
++const TONE_CLASS: Record<Tone, string> = {
++  neutral: "bg-line/70 text-muted",
++  accent: "bg-brand-soft text-brand",
++  success: "bg-emerald-100 text-emerald-800",
++  warning: "bg-amber-100 text-amber-900",
++  danger: "bg-red-100 text-red-800",
++  info: "bg-sky-100 text-sky-800",
++};
++
++/** Label status pesanan dengan warna sesuai tone di state machine. */
++export function StatusPill({ status, className }: { status: BookingStatus; className?: string }) {
++  const meta = BOOKING_STATUS_META[status];
++  return (
++    <span
++      className={cn(
++        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap",
++        TONE_CLASS[meta.tone],
++        className,
++      )}
++    >
++      <span className="size-1.5 rounded-full bg-current" aria-hidden />
++      {meta.label}
++    </span>
++  );
++}
+diff --git a/src/components/store/store-nav.tsx b/src/components/store/store-nav.tsx
+new file mode 100644
+index 0000000..64c2424
+--- /dev/null
++++ b/src/components/store/store-nav.tsx
+@@ -0,0 +1,71 @@
++"use client";
++
++import Link from "next/link";
++import { usePathname } from "next/navigation";
++import { CreditCard, LayoutDashboard, Package, ReceiptText, Settings, type LucideIcon } from "lucide-react";
++import { cn } from "@/lib/utils";
++
++interface NavItem {
++  href: string;
++  label: string;
++  icon: LucideIcon;
++  exact?: boolean;
++  badge?: number;
++}
++
++/**
++ * Navigasi dashboard toko.
++ * HP: baris tab yang bisa digeser di atas konten (navigasi bawah global sudah dipakai MobileNav).
++ * Tablet ke atas: sidebar menempel di kiri.
++ */
++export function StoreNav({ awaitingCheck }: { awaitingCheck: number }) {
++  const pathname = usePathname();
++
++  const items: NavItem[] = [
++    { href: "/dashboard/store", label: "Ringkasan", icon: LayoutDashboard, exact: true },
++    { href: "/dashboard/store/orders", label: "Pesanan masuk", icon: ReceiptText, badge: awaitingCheck },
++    { href: "/dashboard/store/products", label: "Barang", icon: Package },
++    { href: "/dashboard/store/deposit", label: "Deposit", icon: CreditCard },
++    { href: "/dashboard/store/settings", label: "Pengaturan", icon: Settings },
++  ];
++
++  const isActive = (item: NavItem) =>
++    item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
++
++  return (
++    <nav aria-label="Kelola toko" className="-mx-4 md:mx-0">
++      <ul className="hide-scrollbar flex gap-2 overflow-x-auto px-4 pb-1 md:flex-col md:gap-1 md:overflow-visible md:px-0">
++        {items.map((item) => {
++          const active = isActive(item);
++          const Icon = item.icon;
++          return (
++            <li key={item.href} className="shrink-0">
++              <Link
++                href={item.href}
++                aria-current={active ? "page" : undefined}
++                className={cn(
++                  "flex h-11 items-center gap-2.5 rounded-full px-4 text-sm font-semibold transition duration-300 ease-out-expo md:rounded-2xl",
++                  active ? "bg-ink text-canvas" : "bg-surface text-muted ring-1 ring-line hover:text-ink md:bg-transparent md:ring-0 md:hover:bg-ink/5",
++                )}
++              >
++                <Icon className="size-4 shrink-0" aria-hidden />
++                <span>{item.label}</span>
++                {item.badge ? (
++                  <span
++                    className={cn(
++                      "ml-auto grid min-w-5 place-items-center rounded-full px-1.5 text-[0.6875rem] leading-5 font-bold",
++                      active ? "bg-signal text-ink" : "bg-brand text-accent-foreground",
++                    )}
++                    aria-label={`${item.badge} perlu diperiksa`}
++                  >
++                    {item.badge}
++                  </span>
++                ) : null}
++              </Link>
++            </li>
++          );
++        })}
++      </ul>
++    </nav>
++  );
++}
