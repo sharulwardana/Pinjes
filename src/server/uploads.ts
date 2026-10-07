@@ -106,7 +106,7 @@ const PATH_RE = /^([a-z-]+)\/([0-9a-f-]{36})\.(jpg|png|webp|pdf)$/;
 export function resolveUploadPath(relative: string): { kind: UploadKind; abs: string; type: FileType } | null {
   const m = PATH_RE.exec(relative);
   if (!m || !(m[1] in UPLOAD_KINDS)) return null;
-  return { kind: m[1] as UploadKind, abs: path.join(env.uploadDir, m[1], `${m[2]}.${m[3]}`), type: m[3] as FileType };
+  return { kind: m[1] as UploadKind, abs: path.join(/*turbopackIgnore: true*/ env.uploadDir, m[1], `${m[2]}.${m[3]}`), type: m[3] as FileType };
 }
 
 export async function readUpload(relative: string) {

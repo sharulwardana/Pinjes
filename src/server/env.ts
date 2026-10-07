@@ -21,7 +21,7 @@ export const env = {
     return Number.isInteger(n) && n >= 0 ? n : 1;
   },
   get uploadDir() {
-    return path.resolve(process.cwd(), process.env.UPLOAD_DIR ?? "storage/uploads");
+    return path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.UPLOAD_DIR ?? "storage/uploads");
   },
   get uploadMaxBytes() {
     const mb = Number(process.env.UPLOAD_MAX_MB ?? "5");

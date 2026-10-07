@@ -2,36 +2,38 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { TriangleAlert } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-    useEffect(() => {
-        console.error(error);
-    }, [error]);
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
 
-    return (
-        <div className="container mx-auto flex max-w-xl flex-1 flex-col items-center justify-center px-4 py-24 text-center">
-            <TriangleAlert className="h-10 w-10 text-slate-400" aria-hidden />
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">Halaman belum bisa dimuat</h1>
-            <p className="mt-2 text-sm text-slate-600">
-                Ada kendala saat memuat halaman ini. Coba lagi, dan kalau masih sama, kembali ke beranda.
-            </p>
-            {error.digest && <p className="mt-2 text-xs text-slate-400">Kode kendala: {error.digest}</p>}
-            <div className="mt-6 flex gap-3">
-                <button
-                    type="button"
-                    onClick={reset}
-                    className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-                >
-                    Coba lagi
-                </button>
-                <Link
-                    href="/"
-                    className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                >
-                    Ke beranda
-                </Link>
-            </div>
-        </div>
-    );
+  return (
+    <div className="shell flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
+      <span className="grid size-14 place-items-center rounded-full bg-red-50 text-red-700 ring-1 ring-red-200">
+        <AlertCircle className="size-7" aria-hidden />
+      </span>
+      <h1 className="text-title mt-4 text-ink">Halaman belum bisa dimuat</h1>
+      <p className="mt-3 max-w-md text-base leading-relaxed text-muted">
+        Ada kendala saat memuat halaman ini. Coba lagi beberapa saat lagi, atau kembali ke beranda.
+      </p>
+      {error.digest && <p className="mt-2 font-mono text-xs text-muted">Kode kendala: {error.digest}</p>}
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={reset}
+          className="inline-flex h-12 items-center rounded-full bg-ink px-6 text-sm font-semibold text-canvas transition hover:bg-ink/85 active:scale-95"
+        >
+          Coba lagi
+        </button>
+        <Link
+          href="/"
+          className="inline-flex h-12 items-center rounded-full border border-line bg-surface px-6 text-sm font-semibold text-ink transition hover:border-ink hover:bg-canvas active:scale-95"
+        >
+          Ke beranda
+        </Link>
+      </div>
+    </div>
+  );
 }

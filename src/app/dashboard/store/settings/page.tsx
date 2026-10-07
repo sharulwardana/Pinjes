@@ -11,7 +11,7 @@ export default async function StoreSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Pengaturan Toko</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-ink md:text-3xl">Pengaturan Toko</h1>
       <StoreSettingsForm store={store} />
     </div>
   );

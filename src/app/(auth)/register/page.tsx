@@ -11,7 +11,8 @@ import { registerSchema, type RegisterInput } from "@/features/auth/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Reveal } from "@/components/motion/reveal";
+import { Wordmark } from "@/components/navbar";
 
 const ACCOUNT_TYPES = [
   { value: "renter", label: "Penyewa", icon: ShoppingBag },
@@ -49,22 +50,40 @@ function RegisterForm() {
   };
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center p-4">
-      <Card className="mx-auto w-full max-w-md rounded-4xl border-line bg-surface shadow-xl">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="font-display text-2xl font-bold tracking-tight text-ink">Daftar PinjeS</CardTitle>
-          <CardDescription className="text-muted">Mulai menyewa atau daftarkan toko rentalmu.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <div className="grid flex-1 lg:grid-cols-2">
+      {/* Panel merek split-screen, seragam dengan halaman masuk */}
+      <aside className="relative hidden overflow-hidden bg-ink p-12 text-canvas lg:flex lg:flex-col lg:justify-between 2xl:p-16">
+        <div aria-hidden className="hero-glow pointer-events-none absolute inset-0 opacity-60" />
+        <div className="relative">
+          <span className="font-display text-3xl font-bold tracking-tight">pinjes</span>
+        </div>
+        <div className="relative max-w-lg">
+          <p className="text-eyebrow text-signal">Ekosistem rental lokal</p>
+          <p className="text-display mt-5 text-canvas" style={{ fontSize: "clamp(2.5rem, 1rem + 3.6vw, 5rem)" }}>
+            Mulai sewa atau buka tokomu sendiri.
+          </p>
+        </div>
+      </aside>
+
+      {/* Formulir pendaftaran */}
+      <section className="flex items-center justify-center px-5 py-12 md:py-20">
+        <Reveal immediate className="w-full max-w-md">
+          <div className="mb-8 lg:hidden">
+            <Wordmark />
+          </div>
+
+          <h1 className="text-title text-ink">Daftar PinjeS</h1>
+          <p className="mt-3 text-base text-muted">Mulai menyewa barang atau daftarkan toko rentalmu di sekitarmu.</p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
             <fieldset className="space-y-2">
-              <legend className="mb-2 text-sm font-medium text-ink">Daftar sebagai</legend>
-              <div className="grid grid-cols-2 gap-4">
+              <legend className="mb-2 text-sm font-semibold text-ink">Daftar sebagai</legend>
+              <div className="grid grid-cols-2 gap-3">
                 {ACCOUNT_TYPES.map(({ value, label, icon: Icon }) => (
                   <label
                     key={value}
                     htmlFor={`type-${value}`}
-                    className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-line bg-canvas p-4 transition-colors hover:border-ink/40 has-checked:border-brand has-checked:bg-brand-soft/40 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand"
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-line bg-surface p-4 transition-colors hover:border-ink/40 has-checked:border-brand has-checked:bg-brand-soft/40 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand"
                   >
                     <input
                       type="radio"
@@ -74,7 +93,7 @@ function RegisterForm() {
                       {...register("accountType")}
                       disabled={registerMut.isPending}
                     />
-                    <Icon className="h-6 w-6 text-ink/75" aria-hidden />
+                    <Icon className="size-6 text-ink/75" aria-hidden />
                     <span className="text-sm font-semibold text-ink">{label}</span>
                   </label>
                 ))}
@@ -83,9 +102,8 @@ function RegisterForm() {
             </fieldset>
 
             {accountType === "owner" && (
-              <p className="rounded-2xl bg-canvas p-3 text-sm text-muted ring-1 ring-line">
-                Setelah mendaftar, lengkapi profil dan rekening tokomu di Pengaturan Toko, lalu top-up saldo deposit
-                supaya tokomu bisa menerima pesanan.
+              <p className="rounded-2xl bg-canvas p-4 text-xs leading-relaxed text-muted ring-1 ring-line">
+                Setelah mendaftar, lengkapi profil toko di Pengaturan Toko dan top-up saldo deposit agar tokomu bisa menerima pesanan.
               </p>
             )}
 
@@ -120,6 +138,7 @@ function RegisterForm() {
                 id="password"
                 type="password"
                 autoComplete="new-password"
+                placeholder="Minimal 8 karakter"
                 {...register("password")}
                 disabled={registerMut.isPending}
               />
@@ -130,7 +149,8 @@ function RegisterForm() {
               {registerMut.isPending ? "Memproses..." : "Daftar sekarang"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm text-muted">
+
+          <p className="mt-8 text-center text-sm text-muted">
             Sudah punya akun?{" "}
             <Link
               href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
@@ -138,9 +158,9 @@ function RegisterForm() {
             >
               Masuk
             </Link>
-          </div>
-        </CardContent>
-      </Card>
+          </p>
+        </Reveal>
+      </section>
     </div>
   );
 }
@@ -149,7 +169,7 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[80vh] items-center justify-center p-12 text-sm text-muted">
+        <div className="flex flex-1 items-center justify-center p-12 text-sm text-muted">
           Memuat...
         </div>
       }
