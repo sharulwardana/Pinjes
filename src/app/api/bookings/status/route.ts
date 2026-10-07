@@ -73,6 +73,38 @@ export const POST = route({ auth: true }, async ({ req, user }) => {
       throw new AppError("Status pesanan baru saja berubah. Muat ulang halaman.", 409);
     }
 
+    // Jika pesanan yang sudah dikonfirmasi dibatalkan sebelum barang disewa,
+    // kembalikan biaya layanan yang telah dipotong ke saldo deposit toko.
+    if (
+      status === "CANCELLED" &&
+      booking.platformFee > 0 &&
+      (from === "PAYMENT_CONFIRMED" || from === "READY_FOR_PICKUP")
+    ) {
+      await tx.store.update({
+        where: { id: booking.storeId },
+        data: {
+          depositBalance: { increment: booking.platformFee },
+          lockVersion: { increment: 1 },
+        },
+      });
+      const store = await tx.store.findUniqueOrThrow({
+        where: { id: booking.storeId },
+        select: { depositBalance: true },
+      });
+      await tx.depositTransaction.create({
+        data: {
+          storeId: booking.storeId,
+          type: "ADJUSTMENT",
+          amount: booking.platformFee,
+          balanceBefore: store.depositBalance - booking.platformFee,
+          balanceAfter: store.depositBalance,
+          referenceType: "BOOKING",
+          referenceId: booking.id,
+          description: `Pengembalian biaya layanan atas pembatalan pesanan #${booking.code}`,
+        },
+      });
+    }
+
     await tx.auditLog.create({
       data: {
         actorId: user!.id,

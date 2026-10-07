@@ -9,20 +9,14 @@ export function CountUp({ value, className }: { value: number; className?: strin
   const inView = useInView(ref, { once: true });
   const reduce = useReducedMotion();
 
+  const hasAnimated = useRef(false);
+
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !inView || reduce || hasAnimated.current) return;
+    hasAnimated.current = true;
 
     const format = (n: number) => Math.round(n).toLocaleString("id-ID");
-
-    if (reduce) {
-      el.textContent = format(value);
-      return;
-    }
-    if (!inView) {
-      el.textContent = "0";
-      return;
-    }
 
     const controls = animate(0, value, {
       duration: 1.4,

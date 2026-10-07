@@ -202,7 +202,7 @@ export default async function StoreDashboardPage() {
             hint="Untuk biaya layanan. Bukan uang sewa dan tidak bisa ditarik."
             href="/dashboard/store/deposit"
           >
-            Rp<CountUp value={store.depositBalance} />
+            Rp <CountUp value={store.depositBalance} />
           </Stat>
         </div>
       </Reveal>

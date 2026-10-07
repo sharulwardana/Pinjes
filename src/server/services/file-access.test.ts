@@ -18,7 +18,7 @@ async function setup() {
 
     const booking = await db.booking.create({
         data: {
-            code: "RS-UJI0001",
+            code: "PJ-UJI0001",
             customerId: customerA.row.id,
             storeId: store.id,
             startDate: parseDateKey(todayKey()),

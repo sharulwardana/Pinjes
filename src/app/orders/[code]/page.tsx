@@ -30,7 +30,7 @@ function whatsappLink(raw: string) {
   return `https://wa.me/${normalized}`;
 }
 
-const card = "rounded-[1.75rem] bg-surface p-5 ring-1 ring-line md:rounded-[2rem] md:p-6";
+const card = "rounded-[1.75rem] bg-surface p-5 ring-1 ring-line md:rounded-4xl md:p-6";
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ code: string }> }) {
   const user = await requireRole(["CUSTOMER", "STORE_OWNER"]);

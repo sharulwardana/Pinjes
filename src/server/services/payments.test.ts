@@ -13,7 +13,7 @@ async function submittedBooking(opts: { balance?: number; fee?: number } = {}) {
     const customer = await makeUser("CUSTOMER");
     const booking = await db.booking.create({
         data: {
-            code: `RS-T${++n}`,
+            code: `PJ-T${++n}`,
             customerId: customer.row.id,
             storeId: store.id,
             status: "PAYMENT_SUBMITTED",

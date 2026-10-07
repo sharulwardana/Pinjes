@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
@@ -13,8 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Reveal } from "@/components/motion/reveal";
 import { Wordmark } from "@/components/navbar";
 
-export default function LoginPage() {
+function LoginForm() {
   const login = useLogin();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") || undefined;
   const [showPassword, setShowPassword] = useState(false);
   const {
     register,
@@ -25,7 +28,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = (data: LoginInput) => {
-    login.mutate(data);
+    login.mutate({ ...data, next });
   };
 
   return (
@@ -111,12 +114,29 @@ export default function LoginPage() {
 
           <p className="mt-8 text-center text-sm text-muted">
             Belum punya akun?{" "}
-            <Link href="/register" className="font-semibold text-brand underline-offset-4 hover:underline">
+            <Link
+              href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
+              className="font-semibold text-brand underline-offset-4 hover:underline"
+            >
               Daftar sekarang
             </Link>
           </p>
         </Reveal>
       </section>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center p-12 text-sm text-muted">
+          Memuat...
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

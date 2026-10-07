@@ -68,7 +68,7 @@ export function BookingPanel({ pricePerDay, productName, children }: BookingPane
         aria-hidden
         onClick={() => setOpen(false)}
         className={cn(
-          "fixed inset-0 z-[65] bg-ink/50 backdrop-blur-sm transition-opacity duration-500 lg:hidden",
+          "fixed inset-0 z-60 bg-ink/50 backdrop-blur-sm transition-opacity duration-500 lg:hidden",
           sheetOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
@@ -81,10 +81,10 @@ export function BookingPanel({ pricePerDay, productName, children }: BookingPane
         aria-label="Pilih tanggal sewa"
         inert={!isDesktop && !open}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-[70] max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-[2rem] bg-surface px-5 pt-3 shadow-[0_-20px_60px_-20px_rgb(0_0_0/0.4)] transition-transform duration-500 ease-out-expo",
+          "fixed inset-x-0 bottom-0 z-70 max-h-[90dvh] overflow-y-auto overscroll-contain rounded-t-4xl bg-surface px-5 pt-3 shadow-[0_-20px_60px_-20px_rgb(0_0_0/0.4)] transition-transform duration-500 ease-out-expo",
           "pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
           open ? "translate-y-0" : "translate-y-full",
-          "lg:static lg:z-auto lg:max-h-none lg:translate-y-0 lg:overflow-visible lg:rounded-[2rem] lg:border lg:border-line lg:p-6 lg:shadow-sm lg:transition-none",
+          "lg:static lg:z-auto lg:max-h-none lg:translate-y-0 lg:overflow-visible lg:rounded-4xl lg:border lg:border-line lg:p-6 lg:shadow-sm lg:transition-none",
         )}
       >
         <div aria-hidden className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line lg:hidden" />

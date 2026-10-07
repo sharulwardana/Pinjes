@@ -17,12 +17,18 @@ export const createProductSchema = z.object({
   pricePerDay: z.coerce.number().int().min(1000, "Harga sewa minimal Rp 1.000 / hari."),
   deposit: z.coerce.number().int().min(0, "Deposit tidak boleh negatif."),
   stock: z.coerce.number().int().min(1, "Stok minimal 1."),
+  minRentalDays: z.coerce.number().int().min(1, "Minimal sewa minimal 1 hari.").default(1),
+  maxRentalDays: z.coerce.number().int().min(1, "Maksimal sewa minimal 1 hari.").default(30),
+  rentalTerms: z.string().trim().max(2000, "Syarat sewa maksimal 2000 karakter.").optional().default(""),
   // The first array element is the primary photo
   photos: z.array(z.string()).min(1, "Unggah minimal 1 foto barang.").max(5, "Maksimal 5 foto."),
   status: z.enum(["ACTIVE", "DRAFT", "INACTIVE"]).default("ACTIVE"),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
+
+export const updateProductSchema = createProductSchema;
+export type UpdateProductInput = CreateProductInput;
 
 export const searchSchema = z.object({
   q: z.string().trim().optional(),

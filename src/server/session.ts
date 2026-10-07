@@ -7,7 +7,7 @@ import { env } from "./env";
 import { clientIpFromHeaders } from "./client-ip";
 import { getUserBySessionToken, type RequestMeta, type SessionUser } from "./services/auth";
 
-export const SESSION_COOKIE = "rs_session";
+export const SESSION_COOKIE = "pj_session";
 
 /** Current user for this request (deduplicated per render). Role always comes from the DB. */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {

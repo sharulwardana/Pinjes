@@ -34,7 +34,7 @@ export function ProductGallery({ photos, alt }: { photos: string[]; alt: string 
                 aria-label={`Foto ${alt}`}
                 tabIndex={count > 1 ? 0 : undefined}
                 onKeyDown={onKeyDown}
-                className="relative aspect-[4/3] w-full touch-pan-y overflow-hidden rounded-[1.75rem] bg-line/60 ring-1 ring-line focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand md:rounded-[2.25rem] md:aspect-[5/4] lg:aspect-[4/3]"
+                className="relative aspect-4/3 w-full touch-pan-y overflow-hidden rounded-[1.75rem] bg-line/60 ring-1 ring-line focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand md:rounded-[2.25rem] md:aspect-5/4 lg:aspect-4/3"
             >
                 {current ? (
                     <AnimatePresence mode="popLayout" initial={false}>
@@ -107,7 +107,7 @@ export function ProductGallery({ photos, alt }: { photos: string[]; alt: string 
                             aria-label={`Lihat foto ${i + 1} dari ${count}`}
                             aria-current={i === index ? "true" : undefined}
                             className={cn(
-                                "relative aspect-[4/3] w-20 shrink-0 overflow-hidden rounded-2xl bg-line/60 ring-2 transition duration-300 ml:w-24 3xl:w-28",
+                                "relative aspect-4/3 w-20 shrink-0 overflow-hidden rounded-2xl bg-line/60 ring-2 transition duration-300 ml:w-24 3xl:w-28",
                                 i === index ? "ring-ink" : "opacity-70 ring-transparent hover:opacity-100",
                             )}
                         >

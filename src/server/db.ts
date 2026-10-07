@@ -4,14 +4,16 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-// Initialize SQLite driver adapter
-const connectionString = process.env.DATABASE_URL!;
-const adapter = new PrismaBetterSqlite3({ url: connectionString });
+// Deteksi driver: SQLite (local/dev) atau PostgreSQL (production)
+const connectionString = process.env.DATABASE_URL ?? "file:./dev.db";
+const isPostgres = connectionString.startsWith("postgres://") || connectionString.startsWith("postgresql://");
+
+const adapter = isPostgres ? undefined : new PrismaBetterSqlite3({ url: connectionString });
 
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    adapter,
+    ...(adapter ? { adapter } : {}),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 

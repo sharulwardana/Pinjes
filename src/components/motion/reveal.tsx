@@ -3,6 +3,8 @@
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 
+import { cn } from "@/lib/utils";
+
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 interface RevealProps {
@@ -18,23 +20,21 @@ interface RevealProps {
 
 /**
  * Muncul dengan naik halus. Hanya memakai opacity dan transform supaya ringan.
- * Pengguna yang mematikan animasi di sistemnya diatur oleh <MotionConfig> di Providers.
+ * Untuk immediate (atas halaman/hero), memakai CSS animation agar SSR tidak render opacity: 0.
  */
 export function Reveal({ children, className, delay = 0, y = 28, immediate = false }: RevealProps) {
-  const transition = { duration: 0.8, ease: EASE, delay };
-
   if (immediate) {
     return (
-      <motion.div
-        className={className}
-        initial={{ opacity: 0, y }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={transition}
+      <div
+        className={cn("animate-rise", className)}
+        style={delay ? { animationDelay: `${delay}s` } : undefined}
       >
         {children}
-      </motion.div>
+      </div>
     );
   }
+
+  const transition = { duration: 0.8, ease: EASE, delay };
 
   return (
     <motion.div

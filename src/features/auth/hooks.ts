@@ -49,15 +49,21 @@ export function useLogin() {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: (data: LoginInput) =>
+    mutationFn: ({ next: _next, ...data }: LoginInput & { next?: string }) =>
       fetchApi<{ id: string; role: RoleKey }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       toast.success("Berhasil masuk");
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      
+
+      const next = variables?.next;
+      if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")) {
+        router.push(next);
+        return;
+      }
+
       if (data.role === "ADMIN") router.push("/admin");
       else if (data.role === "STORE_OWNER") router.push("/dashboard/store");
       else router.push("/orders");
@@ -73,15 +79,21 @@ export function useRegister() {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: (data: RegisterInput) =>
+    mutationFn: ({ next: _next, ...data }: RegisterInput & { next?: string }) =>
       fetchApi<{ id: string; role: RoleKey }>("/api/auth/register", {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       toast.success("Pendaftaran berhasil");
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      
+
+      const next = variables?.next;
+      if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")) {
+        router.push(next);
+        return;
+      }
+
       if (data.role === "STORE_OWNER") router.push("/dashboard/store");
       else router.push("/orders");
     },

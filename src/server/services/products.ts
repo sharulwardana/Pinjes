@@ -52,6 +52,9 @@ export async function createProduct(user: SessionUser, storeId: string, input: C
       pricePerDay: input.pricePerDay,
       securityDeposit: input.deposit,
       stock: input.stock,
+      minRentalDays: input.minRentalDays,
+      maxRentalDays: input.maxRentalDays,
+      rentalTerms: input.rentalTerms ?? "",
       status: input.status,
       city: store.city,
       images: {
@@ -64,19 +67,39 @@ export async function createProduct(user: SessionUser, storeId: string, input: C
 export async function updateProduct(user: SessionUser, storeId: string, productId: string, input: CreateProductInput) {
   assertStoreAccess(user, storeId);
 
-  const categoryId = await resolveCategoryId(input.category);
-
-  return await db.product.update({
+  const existing = await db.product.findUnique({
     where: { id: productId, storeId, deletedAt: null },
-    data: {
-      name: input.name,
-      description: input.description,
-      categoryId,
-      pricePerDay: input.pricePerDay,
-      securityDeposit: input.deposit,
-      stock: input.stock,
-      status: input.status,
-    },
+  });
+  if (!existing) throw new AppError("Barang tidak ditemukan.", 404);
+
+  const categoryId = await resolveCategoryId(input.category);
+  if (input.photos?.length) {
+    assertProductPhotos(input.photos);
+  }
+
+  return await db.$transaction(async (tx) => {
+    if (input.photos?.length) {
+      await tx.productImage.deleteMany({ where: { productId } });
+      await tx.productImage.createMany({
+        data: input.photos.map((p, i) => ({ productId, path: p, sortOrder: i })),
+      });
+    }
+
+    return await tx.product.update({
+      where: { id: productId },
+      data: {
+        name: input.name,
+        description: input.description,
+        categoryId,
+        pricePerDay: input.pricePerDay,
+        securityDeposit: input.deposit,
+        stock: input.stock,
+        minRentalDays: input.minRentalDays,
+        maxRentalDays: input.maxRentalDays,
+        rentalTerms: input.rentalTerms ?? "",
+        status: input.status,
+      },
+    });
   });
 }
 

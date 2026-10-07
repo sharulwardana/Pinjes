@@ -106,10 +106,16 @@ export const POST = route({ auth: true }, async ({ req, user }) => {
       },
     });
 
-    await tx.booking.update({
-      where: { id: booking.id },
+    const updated = await tx.booking.updateMany({
+      where: {
+        id: booking.id,
+        status: { in: ["PENDING_PAYMENT", "PAYMENT_REJECTED"] },
+      },
       data: { status: "PAYMENT_SUBMITTED" },
     });
+    if (updated.count === 0) {
+      throw new AppError("Status pesanan baru saja berubah. Muat ulang halaman.", 409);
+    }
 
     await tx.auditLog.create({
       data: {

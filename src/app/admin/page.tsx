@@ -27,15 +27,15 @@ function RejectBox({
   const [error, setError] = useState("");
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 rounded-2xl bg-canvas p-3 ring-1 ring-line">
       <textarea
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         maxLength={300}
         rows={2}
-        placeholder="Alasan penolakan"
+        placeholder="Alasan penolakan..."
         aria-label="Alasan penolakan"
-        className="w-full rounded-md border border-zinc-300 p-2 text-xs"
+        className="w-full resize-none rounded-xl border border-line bg-surface p-2.5 text-xs text-ink placeholder:text-muted/60 focus:border-brand focus:outline-none"
       />
       {error && (
         <p role="alert" className="text-xs text-red-600">
@@ -54,11 +54,11 @@ function RejectBox({
             }
             onSubmit(reason.trim());
           }}
-          className="text-xs font-bold"
+          className="text-xs font-bold rounded-full"
         >
           {busy ? "Memproses..." : "Kirim penolakan"}
         </Button>
-        <Button size="sm" variant="outline" onClick={onCancel} disabled={busy} className="text-xs">
+        <Button size="sm" variant="outline" onClick={onCancel} disabled={busy} className="text-xs rounded-full">
           Batal
         </Button>
       </div>
@@ -82,29 +82,30 @@ export default function AdminDashboardPage() {
     approveDeposit.isPending || rejectDeposit.isPending || approveStore.isPending || rejectStore.isPending;
 
   const tabClass = (active: boolean) =>
-    `border-b-2 px-4 pb-3 text-sm font-semibold transition-colors ${active ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-500 hover:text-zinc-800"
+    `rounded-full px-5 py-2 text-sm font-semibold transition duration-200 ${
+      active ? "bg-ink text-canvas shadow-xs" : "text-muted hover:bg-ink/5 hover:text-ink"
     }`;
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col justify-between gap-4 border-b border-zinc-200 pb-5 sm:flex-row sm:items-center">
+    <div className="space-y-8 max-w-6xl">
+      <div className="flex flex-col justify-between gap-4 border-b border-line pb-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-950">Admin PinjeS</h1>
-          <p className="mt-1 text-sm text-zinc-500">Tinjau toko baru dan verifikasi top-up deposit.</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-ink md:text-4xl">Admin PinjeS</h1>
+          <p className="mt-1 text-sm text-muted">Tinjau toko baru dan verifikasi top-up saldo deposit.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button asChild variant="outline" className="rounded-xl text-xs font-semibold">
+          <Button asChild variant="outline" className="rounded-full text-xs font-semibold">
             <Link href="/" target="_blank">
               Lihat website utama
             </Link>
           </Button>
-          <Button asChild className="rounded-xl text-xs font-semibold">
+          <Button asChild className="rounded-full text-xs font-semibold">
             <Link href="/dashboard/store">Masuk toko saya</Link>
           </Button>
         </div>
       </div>
 
-      <div role="tablist" className="flex gap-2 border-b border-zinc-200">
+      <div role="tablist" className="flex gap-2 rounded-full bg-surface p-1.5 ring-1 ring-line w-fit">
         <button
           role="tab"
           type="button"
@@ -115,7 +116,7 @@ export default function AdminDashboardPage() {
           }}
           className={tabClass(tab === "stores")}
         >
-          Toko menunggu tinjauan ({stores?.length ?? 0})
+          Toko menunggu ({stores?.length ?? 0})
         </button>
         <button
           role="tab"
@@ -134,67 +135,67 @@ export default function AdminDashboardPage() {
       {tab === "stores" && (
         <section className="space-y-4">
           {storesLoading ? (
-            <p className="p-8 text-center text-sm text-zinc-400">Memuat pengajuan toko...</p>
+            <p className="p-12 text-center text-sm text-muted">Memuat pengajuan toko...</p>
           ) : !stores || stores.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 p-12 text-center text-sm text-zinc-500">
-              <p className="font-bold text-zinc-800">Tidak ada toko yang menunggu</p>
-              <p className="mt-1 text-xs text-zinc-400">Pengajuan toko baru akan muncul di sini.</p>
+            <div className="rounded-[1.75rem] border border-dashed border-line p-12 text-center text-sm text-muted">
+              <p className="font-bold text-ink">Tidak ada toko yang menunggu tinjauan</p>
+              <p className="mt-1 text-xs text-muted">Pengajuan toko baru akan muncul di sini.</p>
             </div>
           ) : (
             stores.map((s) => (
-              <article key={s.id} className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <article key={s.id} className="space-y-4 rounded-[1.75rem] border border-line bg-surface p-6 shadow-sm">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                  <h2 className="text-lg font-bold text-zinc-900">{s.name}</h2>
-                  <p className="text-xs text-zinc-500">
+                  <h2 className="font-display text-xl font-bold tracking-tight text-ink">{s.name}</h2>
+                  <p className="text-xs text-muted">
                     Diajukan{" "}
                     {s.submittedAt
                       ? new Date(s.submittedAt).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                       : "-"}
                   </p>
                 </div>
 
                 <dl className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
                   <div>
-                    <dt className="text-zinc-500">Pemilik</dt>
-                    <dd className="text-zinc-900">
+                    <dt className="text-muted">Pemilik</dt>
+                    <dd className="font-semibold text-ink">
                       {s.owner.name} ({s.owner.email})
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-500">WhatsApp</dt>
-                    <dd className="font-mono text-zinc-900">{s.whatsapp || "-"}</dd>
+                    <dt className="text-muted">WhatsApp</dt>
+                    <dd className="font-mono text-ink">{s.whatsapp || "-"}</dd>
                   </div>
                   <div className="sm:col-span-2">
-                    <dt className="text-zinc-500">Alamat</dt>
-                    <dd className="text-zinc-900">{[s.address, s.city].filter(Boolean).join(", ") || "-"}</dd>
+                    <dt className="text-muted">Alamat</dt>
+                    <dd className="text-ink">{[s.address, s.city].filter(Boolean).join(", ") || "-"}</dd>
                   </div>
                   <div className="sm:col-span-2">
-                    <dt className="text-zinc-500">Deskripsi</dt>
-                    <dd className="text-zinc-900">{s.description || "-"}</dd>
+                    <dt className="text-muted">Deskripsi</dt>
+                    <dd className="text-ink">{s.description || "-"}</dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-500">Rekening</dt>
-                    <dd className="text-zinc-900">
+                    <dt className="text-muted">Rekening</dt>
+                    <dd className="text-ink">
                       {s.bankAccountNumber
                         ? `${s.bankName ?? ""} ${s.bankAccountNumber} a.n. ${s.bankAccountName ?? ""}`
                         : "-"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-500">QRIS</dt>
+                    <dt className="text-muted">QRIS</dt>
                     <dd>
                       {s.qrisImagePath ? (
                         <a
                           href={`/api/files/${s.qrisImagePath}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-medium text-blue-600 hover:underline"
+                          className="font-medium text-brand hover:underline"
                         >
                           Lihat QRIS
                         </a>
@@ -205,7 +206,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </dl>
 
-                <div className="border-t border-zinc-100 pt-4">
+                <div className="border-t border-line pt-4">
                   {rejectingId === s.id ? (
                     <RejectBox
                       busy={rejectStore.isPending}
@@ -216,10 +217,22 @@ export default function AdminDashboardPage() {
                     />
                   ) : (
                     <div className="flex gap-2">
-                      <Button size="sm" disabled={busy} onClick={() => approveStore.mutate(s.id)}>
+                      <Button
+                        size="sm"
+                        variant="signal"
+                        disabled={busy}
+                        onClick={() => approveStore.mutate(s.id)}
+                        className="rounded-full text-ink font-bold"
+                      >
                         {approveStore.isPending ? "Menyetujui..." : "Setujui toko"}
                       </Button>
-                      <Button size="sm" variant="outline" disabled={busy} onClick={() => setRejectingId(s.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => setRejectingId(s.id)}
+                        className="rounded-full"
+                      >
                         Tolak
                       </Button>
                     </div>
@@ -232,26 +245,28 @@ export default function AdminDashboardPage() {
       )}
 
       {tab === "deposits" && (
-        <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-1 border-b border-zinc-100 bg-zinc-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-sm font-bold text-zinc-900">Deposit menunggu verifikasi ({deposits?.length ?? 0})</h2>
-            <span className="text-xs text-zinc-500">
-              Saldo ini dipotong biaya layanan setiap toko mengonfirmasi pembayaran pesanan.
+        <section className="overflow-hidden rounded-[1.75rem] border border-line bg-surface shadow-sm">
+          <div className="flex flex-col gap-1 border-b border-line bg-canvas/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="font-display text-base font-bold text-ink">
+              Deposit menunggu verifikasi ({deposits?.length ?? 0})
+            </h2>
+            <span className="text-xs text-muted">
+              Saldo ini dipotong biaya layanan setiap toko mengonfirmasi pesanan.
             </span>
           </div>
 
           {depositsLoading ? (
-            <div className="p-8 text-center text-sm text-zinc-400">Memuat permohonan deposit...</div>
+            <div className="p-12 text-center text-sm text-muted">Memuat permohonan deposit...</div>
           ) : !deposits || deposits.length === 0 ? (
-            <div className="p-12 text-center text-sm text-zinc-500">
-              <p className="font-bold text-zinc-800">Tidak ada deposit yang menunggu</p>
-              <p className="mt-1 text-xs text-zinc-400">Permohonan top-up dari toko akan muncul di sini.</p>
+            <div className="p-12 text-center text-sm text-muted">
+              <p className="font-bold text-ink">Tidak ada deposit yang menunggu</p>
+              <p className="mt-1 text-xs text-muted">Permohonan top-up dari toko akan muncul di sini.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-zinc-100 bg-zinc-50/50 text-left text-zinc-500">
+                  <tr className="border-b border-line bg-canvas/40 text-left text-muted">
                     <th className="p-4 font-semibold">Tanggal</th>
                     <th className="p-4 font-semibold">Toko</th>
                     <th className="p-4 font-semibold">Jumlah</th>
@@ -260,13 +275,13 @@ export default function AdminDashboardPage() {
                     <th className="p-4 font-semibold">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-100">
+                <tbody className="divide-y divide-line">
                   {deposits.map((d) => {
                     const sender =
                       [d.senderName, d.senderBank ? `(${d.senderBank})` : null].filter(Boolean).join(" ") || "-";
                     return (
-                      <tr key={d.id} className="align-top hover:bg-zinc-50">
-                        <td className="p-4 text-zinc-600">
+                      <tr key={d.id} className="align-top hover:bg-canvas/50 transition">
+                        <td className="p-4 text-muted">
                           {new Date(d.createdAt).toLocaleDateString("id-ID", {
                             day: "numeric",
                             month: "short",
@@ -275,15 +290,15 @@ export default function AdminDashboardPage() {
                             minute: "2-digit",
                           })}
                         </td>
-                        <td className="p-4 font-bold text-zinc-900">{d.store.name}</td>
-                        <td className="p-4 font-mono text-sm font-bold text-zinc-900">{formatRupiah(d.amount)}</td>
-                        <td className="p-4 text-zinc-600">{sender}</td>
+                        <td className="p-4 font-bold text-ink">{d.store.name}</td>
+                        <td className="p-4 font-mono text-sm font-bold text-ink">{formatRupiah(d.amount)}</td>
+                        <td className="p-4 text-muted">{sender}</td>
                         <td className="p-4">
                           <a
                             href={`/api/files/${d.proofPath}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="font-semibold text-blue-600 hover:underline"
+                            className="font-semibold text-brand hover:underline"
                           >
                             Lihat bukti
                           </a>
@@ -304,9 +319,10 @@ export default function AdminDashboardPage() {
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
+                                variant="signal"
                                 disabled={busy}
                                 onClick={() => approveDeposit.mutate(d.id)}
-                                className="text-xs font-bold"
+                                className="text-xs font-bold rounded-full text-ink"
                               >
                                 {approveDeposit.isPending ? "Menyetujui..." : "Setujui"}
                               </Button>
@@ -315,7 +331,7 @@ export default function AdminDashboardPage() {
                                 variant="outline"
                                 disabled={busy}
                                 onClick={() => setRejectingId(d.id)}
-                                className="text-xs font-bold"
+                                className="text-xs font-bold rounded-full"
                               >
                                 Tolak
                               </Button>

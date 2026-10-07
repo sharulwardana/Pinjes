@@ -99,7 +99,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
           {count}
         </span>
       </h2>
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr))] md:gap-5">{children}</div>
+      <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,24rem),1fr))] md:gap-5">{children}</div>
     </section>
   );
 }
@@ -119,7 +119,7 @@ export default async function CustomerOrdersPage() {
       </header>
 
       {bookings.length === 0 ? (
-        <div className="flex flex-col items-center rounded-[2rem] border border-dashed border-line bg-surface/60 px-5 py-20 text-center">
+        <div className="flex flex-col items-center rounded-4xl border border-dashed border-line bg-surface/60 px-5 py-20 text-center">
           <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
             <PackageSearch className="size-7" aria-hidden />
           </span>

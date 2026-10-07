@@ -1,6 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ShoppingBag, Store } from "lucide-react";
@@ -25,8 +27,11 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
-export default function RegisterPage() {
+function RegisterForm() {
   const registerMut = useRegister();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") || undefined;
+
   const {
     register,
     handleSubmit,
@@ -40,26 +45,26 @@ export default function RegisterPage() {
   const accountType = useWatch({ control, name: "accountType" });
 
   const onSubmit = (data: RegisterInput) => {
-    registerMut.mutate(data);
+    registerMut.mutate({ ...data, next });
   };
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center p-4">
-      <Card className="mx-auto w-full max-w-md">
+      <Card className="mx-auto w-full max-w-md rounded-4xl border-line bg-surface shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">Daftar PinjeS</CardTitle>
-          <CardDescription>Mulai menyewa atau daftarkan toko rentalmu.</CardDescription>
+          <CardTitle className="font-display text-2xl font-bold tracking-tight text-ink">Daftar PinjeS</CardTitle>
+          <CardDescription className="text-muted">Mulai menyewa atau daftarkan toko rentalmu.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <fieldset className="space-y-2">
-              <legend className="mb-2 text-sm font-medium text-zinc-900">Daftar sebagai</legend>
+              <legend className="mb-2 text-sm font-medium text-ink">Daftar sebagai</legend>
               <div className="grid grid-cols-2 gap-4">
                 {ACCOUNT_TYPES.map(({ value, label, icon: Icon }) => (
                   <label
                     key={value}
                     htmlFor={`type-${value}`}
-                    className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-400 has-checked:border-accent has-checked:bg-accent/5 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+                    className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-line bg-canvas p-4 transition-colors hover:border-ink/40 has-checked:border-brand has-checked:bg-brand-soft/40 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand"
                   >
                     <input
                       type="radio"
@@ -69,8 +74,8 @@ export default function RegisterPage() {
                       {...register("accountType")}
                       disabled={registerMut.isPending}
                     />
-                    <Icon className="h-6 w-6 text-zinc-700" aria-hidden />
-                    <span className="text-sm font-semibold">{label}</span>
+                    <Icon className="h-6 w-6 text-ink/75" aria-hidden />
+                    <span className="text-sm font-semibold text-ink">{label}</span>
                   </label>
                 ))}
               </div>
@@ -78,7 +83,7 @@ export default function RegisterPage() {
             </fieldset>
 
             {accountType === "owner" && (
-              <p className="rounded-lg bg-zinc-50 p-3 text-sm text-zinc-600">
+              <p className="rounded-2xl bg-canvas p-3 text-sm text-muted ring-1 ring-line">
                 Setelah mendaftar, lengkapi profil dan rekening tokomu di Pengaturan Toko, lalu top-up saldo deposit
                 supaya tokomu bisa menerima pesanan.
               </p>
@@ -121,18 +126,35 @@ export default function RegisterPage() {
               <FieldError message={errors.password?.message} />
             </div>
 
-            <Button type="submit" className="w-full" disabled={registerMut.isPending}>
+            <Button type="submit" size="lg" className="w-full" disabled={registerMut.isPending}>
               {registerMut.isPending ? "Memproses..." : "Daftar sekarang"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
+          <div className="mt-4 text-center text-sm text-muted">
             Sudah punya akun?{" "}
-            <Link href="/login" className="font-semibold text-accent hover:underline">
+            <Link
+              href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
+              className="font-semibold text-brand underline-offset-4 hover:underline"
+            >
               Masuk
             </Link>
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[80vh] items-center justify-center p-12 text-sm text-muted">
+          Memuat...
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

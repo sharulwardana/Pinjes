@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
 /**
  * Proxy (dulu "middleware" sebelum Next 16): hanya memasang header keamanan.
@@ -9,7 +8,7 @@ import type { NextRequest } from "next/server";
  * request. Membandingkan Origin dengan header Host di sini rapuh: di balik reverse
  * proxy, Host sering berbeda dari yang dilihat browser dan semua POST jadi 403.
  */
-export function proxy(_request: NextRequest) {
+export function proxy() {
   const response = NextResponse.next();
 
   response.headers.set("X-Frame-Options", "DENY");

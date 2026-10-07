@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, Menu, Search, X } from "lucide-react";
 import { useAuth, useLogout } from "@/features/auth/hooks";
+import { NotificationsMenu } from "@/components/notifications-menu";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -113,6 +114,7 @@ export function Navbar() {
               <div className="hidden h-11 w-32 animate-pulse rounded-full bg-ink/5 md:block" />
             ) : user ? (
               <>
+                <NotificationsMenu />
                 <Link
                   href={account.href}
                   className="hidden h-11 items-center gap-1.5 rounded-full bg-ink px-5 text-sm font-semibold text-canvas transition hover:bg-ink/85 md:inline-flex"

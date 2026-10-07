@@ -39,77 +39,83 @@ export default async function StoreDepositPage() {
       : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Dompet Deposit</h1>
-        <p className="text-zinc-500">Kelola saldo deposit untuk membayar biaya layanan PinjeS.</p>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-ink md:text-3xl">Dompet Deposit</h1>
+        <p className="mt-1 text-sm text-muted">Kelola saldo deposit untuk membayar biaya layanan PinjeS.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-medium text-zinc-500">Saldo Deposit Saat Ini</h2>
-          <p className="mt-2 text-4xl font-bold text-zinc-900">{formatRupiah(store.depositBalance)}</p>
-          <p className="mt-2 text-xs text-zinc-500">
-            Setiap kali kamu mengonfirmasi pembayaran penyewa, biaya layanan {formatRupiah(settings.service_fee)}{" "}
-            dipotong dari saldo ini. Saldo ini bukan pendapatan sewa dan tidak bisa ditarik.
-          </p>
-          <p className="mt-2 text-xs text-zinc-500">
-            Minimal top-up {formatRupiah(settings.minimum_deposit)}.
-          </p>
+        <div className="rounded-[1.75rem] border border-line bg-surface p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-muted">Saldo Deposit Saat Ini</h2>
+            <p className="mt-2 font-display text-4xl font-bold tracking-tight text-ink">
+              {formatRupiah(store.depositBalance)}
+            </p>
+          </div>
+          <div className="mt-6 space-y-2 border-t border-line pt-4 text-xs leading-relaxed text-muted">
+            <p>
+              Setiap kali kamu mengonfirmasi pembayaran penyewa, biaya layanan {formatRupiah(settings.service_fee)}{" "}
+              dipotong dari saldo ini. Saldo ini bukan pendapatan sewa dan tidak bisa ditarik.
+            </p>
+            <p className="font-semibold text-ink">
+              Minimal top-up saldo: {formatRupiah(settings.minimum_deposit)}.
+            </p>
+          </div>
         </div>
 
         <DepositForm platformAccount={platformAccount} />
       </div>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-zinc-100 bg-zinc-50/50 p-4">
-          <h3 className="font-semibold text-zinc-900">Riwayat Top-up</h3>
+      <div className="rounded-[1.75rem] border border-line bg-surface shadow-sm overflow-hidden">
+        <div className="border-b border-line bg-canvas/60 p-5">
+          <h3 className="font-display text-base font-bold text-ink">Riwayat Top-up</h3>
         </div>
-        <div className="p-0">
+        <div>
           {deposits.length === 0 ? (
-            <div className="p-8 text-center text-sm text-zinc-500">Belum ada riwayat top-up.</div>
+            <div className="p-12 text-center text-sm text-muted">Belum ada riwayat top-up.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-100 text-left text-zinc-500">
-                    <th className="p-4 font-medium">Tanggal</th>
-                    <th className="p-4 font-medium">Jumlah</th>
-                    <th className="p-4 font-medium">Status</th>
-                    <th className="p-4 font-medium">Bank Pengirim</th>
-                    <th className="p-4 font-medium">Keterangan</th>
+                  <tr className="border-b border-line bg-canvas/40 text-left text-xs font-semibold text-muted">
+                    <th className="p-4">Tanggal</th>
+                    <th className="p-4">Jumlah</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Bank Pengirim</th>
+                    <th className="p-4">Keterangan</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-100">
+                <tbody className="divide-y divide-line text-xs">
                   {deposits.map((d) => (
-                    <tr key={d.id} className="group hover:bg-zinc-50">
-                      <td className="p-4 text-zinc-600">
+                    <tr key={d.id} className="hover:bg-canvas/40 transition">
+                      <td className="p-4 text-muted">
                         {d.createdAt.toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
                         })}
                       </td>
-                      <td className="p-4 font-medium text-zinc-900">{formatRupiah(d.amount)}</td>
+                      <td className="p-4 font-mono font-bold text-ink text-sm">{formatRupiah(d.amount)}</td>
                       <td className="p-4">
                         {d.status === "PENDING" && (
-                          <span className="inline-flex items-center rounded-full bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20">
+                          <span className="inline-flex items-center rounded-full bg-yellow-50 px-2.5 py-1 text-xs font-semibold text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
                             Menunggu Verifikasi
                           </span>
                         )}
                         {d.status === "APPROVED" && (
-                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-800 ring-1 ring-inset ring-green-600/20">
                             Berhasil
                           </span>
                         )}
                         {d.status === "REJECTED" && (
-                          <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
+                          <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-800 ring-1 ring-inset ring-red-600/20">
                             Ditolak
                           </span>
                         )}
                       </td>
-                      <td className="p-4 text-zinc-600">{d.senderBank || "-"}</td>
-                      <td className="p-4 text-zinc-600">
+                      <td className="p-4 text-muted">{d.senderBank || "-"}</td>
+                      <td className="p-4 text-muted">
                         {d.status === "REJECTED" ? d.rejectionReason || "-" : "-"}
                       </td>
                     </tr>

@@ -10,6 +10,9 @@ import { BookingForm } from "@/components/booking-form";
 import { BookingPanel } from "@/components/booking-panel";
 import { ProductGallery } from "@/components/product-gallery";
 import { Reveal } from "@/components/motion/reveal";
+import { ShareButton } from "@/components/share-button";
+import { FavoriteButton } from "@/components/favorite-button";
+import { isProductFavorited } from "@/server/services/favorites";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -44,6 +47,8 @@ export default async function ProductDetailPage({ params }: Props) {
   const product = await getProductBySlug(slug, viewer);
 
   if (!product) notFound();
+
+  const isFavorited = viewer ? await isProductFavorited(viewer.id, product.id) : false;
 
   const store = product.store;
   const isPreview = product.status !== "ACTIVE" || store.status !== "ACTIVE";
@@ -119,20 +124,26 @@ export default async function ProductDetailPage({ params }: Props) {
 
         {/* Judul dan harga, satu baris penuh di semua ukuran layar */}
         <Reveal immediate className="mb-6 md:mb-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-brand-soft px-3.5 py-1.5 text-xs font-semibold text-brand">
-              {product.categoryName}
-            </span>
-            {product.ratingCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink ring-1 ring-line">
-                <Star className="size-3.5 fill-amber-400 text-amber-400" aria-hidden />
-                {product.ratingAvg.toFixed(1)}
-                <span className="font-normal text-muted">({product.ratingCount} ulasan)</span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-brand-soft px-3.5 py-1.5 text-xs font-semibold text-brand">
+                {product.categoryName}
               </span>
-            )}
-            {product.rentalCount > 0 && (
-              <span className="text-xs text-muted">Sudah disewa {product.rentalCount}x</span>
-            )}
+              {product.ratingCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink ring-1 ring-line">
+                  <Star className="size-3.5 fill-amber-400 text-amber-400" aria-hidden />
+                  {product.ratingAvg.toFixed(1)}
+                  <span className="font-normal text-muted">({product.ratingCount} ulasan)</span>
+                </span>
+              )}
+              {product.rentalCount > 0 && (
+                <span className="text-xs text-muted">Sudah disewa {product.rentalCount}x</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <FavoriteButton productId={product.id} initialFavorited={isFavorited} />
+              <ShareButton title={product.name} />
+            </div>
           </div>
 
           <h1 className="text-title mt-4 max-w-4xl text-ink">{product.name}</h1>
@@ -162,7 +173,7 @@ export default async function ProductDetailPage({ params }: Props) {
             </Reveal>
 
             <Reveal>
-              <section className="rounded-[1.75rem] bg-surface p-6 ring-1 ring-line md:rounded-[2rem] md:p-8">
+              <section className="rounded-[1.75rem] bg-surface p-6 ring-1 ring-line md:rounded-4xl md:p-8">
                 <h2 className="font-display text-xl font-bold tracking-tight text-ink md:text-2xl">Tentang barang ini</h2>
                 <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-muted">{product.description}</p>
 
@@ -178,7 +189,7 @@ export default async function ProductDetailPage({ params }: Props) {
             </Reveal>
 
             <Reveal>
-              <section className="rounded-[1.75rem] bg-surface p-6 ring-1 ring-line md:rounded-[2rem] md:p-8">
+              <section className="rounded-[1.75rem] bg-surface p-6 ring-1 ring-line md:rounded-4xl md:p-8">
                 <p className="text-eyebrow text-brand">Disewakan oleh</p>
 
                 <div className="mt-4 flex flex-wrap items-start justify-between gap-4">

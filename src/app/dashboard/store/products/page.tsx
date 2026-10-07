@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ImageOff, Plus, Star } from "lucide-react";
+import { ExternalLink, ImageOff, Pencil, Plus, Star } from "lucide-react";
 import { requireRole } from "@/server/session";
 import { db } from "@/server/db";
 import { ownStoreId } from "@/server/policies";
@@ -54,11 +54,8 @@ export default async function StoreProductsPage() {
             const status = PRODUCT_STATUS[product.status] ?? { label: product.status, className: "bg-line/70 text-muted" };
             return (
               <li key={product.id}>
-                <Link
-                  href={`/p/${product.slug}`}
-                  className="group flex h-full flex-col rounded-[1.75rem] bg-surface p-2 ring-1 ring-line transition duration-500 ease-out-expo hover:-translate-y-1.5 hover:shadow-[0_28px_56px_-28px_rgb(0_0_0/0.3)]"
-                >
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] bg-line/60">
+                <div className="group flex h-full flex-col rounded-[1.75rem] bg-surface p-2 ring-1 ring-line transition duration-500 ease-out-expo hover:-translate-y-1 hover:shadow-[0_28px_56px_-28px_rgb(0_0_0/0.3)]">
+                  <div className="relative aspect-4/3 overflow-hidden rounded-[1.4rem] bg-line/60">
                     {photo ? (
                       <ProductImage
                         path={photo}
@@ -108,8 +105,21 @@ export default async function StoreProductsPage() {
                         </dd>
                       </div>
                     </dl>
+
+                    <div className="flex items-center gap-2 border-t border-line pt-3">
+                      <Button asChild size="sm" variant="default" className="flex-1 rounded-full text-xs">
+                        <Link href={`/dashboard/store/products/${product.id}`}>
+                          <Pencil className="size-3.5" /> Edit
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" variant="outline" className="rounded-full text-xs">
+                        <Link href={`/p/${product.slug}`} target="_blank">
+                          <ExternalLink className="size-3.5" /> Lihat
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
-                </Link>
+                </div>
               </li>
             );
           })}

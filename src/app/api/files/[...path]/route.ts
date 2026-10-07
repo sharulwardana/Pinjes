@@ -27,7 +27,7 @@ export const GET = route({}, async ({ params, user }) => {
     if (!allowed) return notFound();
   }
 
-  return new NextResponse(file.buf, {
+  return new NextResponse(new Uint8Array(file.buf), {
     headers: {
       "Content-Type": file.mimeType,
       "Cache-Control": isPublic

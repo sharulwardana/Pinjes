@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "motion/react";
 import { useCreateBooking } from "@/features/booking/hooks";
 import { useAuth } from "@/features/auth/hooks";
 import { Button } from "@/components/ui/button";
+import { AnimatedNumber } from "@/components/animated-number";
 import { eachDateKey, parseDateKey, toDateKey, todayKey } from "@/lib/dates";
 import { formatRupiah } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -53,34 +56,32 @@ export function BookingForm({
     y: Number(today.slice(0, 4)),
     m: Number(today.slice(5, 7)) - 1,
   }));
-  const [status, setStatus] = useState<Record<string, DayStatus>>({});
-  const [load, setLoad] = useState<"loading" | "ready" | "error">("loading");
-  const [attempt, setAttempt] = useState(0);
+
+  const {
+    data: calendarDays,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["product-calendar", productId, today, lastKey],
+    queryFn: async () => {
+      const qs = new URLSearchParams({ productId, from: today, to: lastKey });
+      const res = await fetch(`/api/products/calendar?${qs.toString()}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Gagal memuat kalender");
+      return json.data.days as CalendarDay[];
+    },
+    staleTime: 60_000,
+  });
+
+  const status = useMemo(() => {
+    if (!calendarDays) return {};
+    return Object.fromEntries(calendarDays.map((d) => [d.date, d.status]));
+  }, [calendarDays]);
 
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    const qs = new URLSearchParams({ productId, from: today, to: lastKey });
-    fetch(`/api/products/calendar?${qs.toString()}`)
-      .then(async (res) => {
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.message);
-        return json.data.days as CalendarDay[];
-      })
-      .then((days) => {
-        if (cancelled) return;
-        setStatus(Object.fromEntries(days.map((d) => [d.date, d.status])));
-        setLoad("ready");
-      })
-      .catch(() => {
-        if (!cancelled) setLoad("error");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [productId, today, lastKey, attempt]);
+  const [customerNote, setCustomerNote] = useState("");
 
   const pick = (key: string) => {
     if (status[key] !== "available") return;
@@ -116,14 +117,20 @@ export function BookingForm({
   const submit = () => {
     if (!user) {
       toast.error("Silakan masuk terlebih dahulu.");
-      router.push("/login");
+      const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+      router.push(`/login?next=${encodeURIComponent(currentPath)}`);
       return;
     }
     if (!start || !end) {
       toast.error("Pilih tanggal sewa terlebih dahulu.");
       return;
     }
-    createBooking.mutate({ productId, startDate: start, endDate: end });
+    createBooking.mutate({
+      productId,
+      startDate: start,
+      endDate: end,
+      customerNote: customerNote.trim() || undefined,
+    });
   };
 
   const days = start && end ? eachDateKey(start, end).length : 0;
@@ -180,15 +187,12 @@ export function BookingForm({
           </button>
         </div>
 
-        {load === "error" ? (
+        {isError ? (
           <div className="space-y-2 py-8 text-center text-sm text-muted">
             <p>Kalender ketersediaan gagal dimuat.</p>
             <button
               type="button"
-              onClick={() => {
-                setLoad("loading");
-                setAttempt((n) => n + 1);
-              }}
+              onClick={() => refetch()}
               className="font-semibold text-ink underline underline-offset-4"
             >
               Coba lagi
@@ -204,12 +208,12 @@ export function BookingForm({
               ))}
             </div>
 
-            <div className={cn("mt-1 grid grid-cols-7 gap-y-1 transition-opacity", load === "loading" && "opacity-50")}>
+            <div className={cn("mt-1 grid grid-cols-7 gap-y-1 transition-opacity", isLoading && "opacity-50")}>
               {cells.map((key, i) => {
                 if (!key) return <span key={`blank-${i}`} />;
 
                 const st = status[key];
-                const available = load === "ready" && st === "available";
+                const available = !isLoading && !isError && st === "available";
                 const isStart = key === start;
                 const isEnd = key === end;
                 const isEdge = isStart || isEnd;
@@ -265,31 +269,61 @@ export function BookingForm({
         {start && !end && <p>Mulai {shortDate(start)}. Sekarang pilih tanggal selesai.</p>}
         {start && end && (
           <p>
-            {shortDate(start)} sampai {shortDate(end)} ({days} hari)
+            {shortDate(start)} sampai {shortDate(end)} (<AnimatedNumber value={days} /> hari)
           </p>
         )}
       </div>
 
-      {days > 0 && (
-        <div className="space-y-2.5 rounded-3xl bg-canvas p-4 text-sm text-muted ring-1 ring-line">
-          <div className="flex justify-between gap-4">
-            <span>
-              {formatRupiah(pricePerDay)} x {days} hari
-            </span>
-            <span className="text-ink">{formatRupiah(lineTotal)}</span>
-          </div>
-          {securityDeposit > 0 && (
-            <div className="flex justify-between gap-4">
-              <span>Uang jaminan</span>
-              <span className="text-ink">{formatRupiah(securityDeposit)}</span>
+      <AnimatePresence>
+        {days > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-4 overflow-hidden"
+          >
+            <div className="space-y-2.5 rounded-3xl bg-canvas p-4 text-sm text-muted ring-1 ring-line">
+              <div className="flex justify-between gap-4">
+                <span>
+                  {formatRupiah(pricePerDay)} x <AnimatedNumber value={days} /> hari
+                </span>
+                <span className="text-ink">
+                  <AnimatedNumber value={formatRupiah(lineTotal)} />
+                </span>
+              </div>
+              {securityDeposit > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span>Uang jaminan</span>
+                  <span className="text-ink">{formatRupiah(securityDeposit)}</span>
+                </div>
+              )}
+              <div className="flex items-baseline justify-between gap-4 border-t border-line pt-3 text-ink">
+                <span className="font-semibold">Total bayar</span>
+                <AnimatedNumber
+                  value={formatRupiah(total)}
+                  className="font-display text-2xl font-bold tracking-tight"
+                />
+              </div>
             </div>
-          )}
-          <div className="flex items-baseline justify-between gap-4 border-t border-line pt-3 text-ink">
-            <span className="font-semibold">Total bayar</span>
-            <span className="font-display text-2xl font-bold tracking-tight">{formatRupiah(total)}</span>
-          </div>
-        </div>
-      )}
+
+            <div className="space-y-1.5">
+              <label htmlFor="customer-note" className="text-xs font-semibold text-muted">
+                Catatan untuk toko (opsional)
+              </label>
+              <textarea
+                id="customer-note"
+                rows={2}
+                value={customerNote}
+                onChange={(e) => setCustomerNote(e.target.value)}
+                placeholder="Contoh: perkiraan jam ambil barang, permintaan khusus, dll."
+                maxLength={500}
+                className="w-full resize-none rounded-2xl border border-line bg-canvas p-3 text-sm text-ink placeholder:text-muted/60 focus:border-brand focus:outline-none"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Button
         size="lg"

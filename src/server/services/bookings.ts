@@ -7,6 +7,8 @@ import { AppError } from "../errors";
 import { getSettings } from "../settings";
 import { assertRangeAvailable } from "./availability";
 import { customAlphabet } from "nanoid";
+import { EXPIRING_STATUSES } from "@/features/booking/status";
+import { notify, sendWhatsApp } from "../notifications";
 
 const nanoid = customAlphabet("1234567890ABCDEF", 8);
 
@@ -57,7 +59,7 @@ export async function createBooking(
         status: true,
         deletedAt: true,
         store: {
-          select: { ownerId: true, status: true, deletedAt: true, depositBalance: true },
+          select: { ownerId: true, status: true, deletedAt: true, depositBalance: true, whatsapp: true },
         },
       },
     });
@@ -86,7 +88,7 @@ export async function createBooking(
     // 3. Harga
     const lineTotal = product.pricePerDay * days;
     const total = lineTotal + product.securityDeposit;
-    const code = `RS-${nanoid()}`;
+    const code = `PJ-${nanoid()}`;
 
     // 4. Simpan booking dan data pembayarannya
     const booking = await tx.booking.create({
@@ -131,11 +133,63 @@ export async function createBooking(
       },
     });
 
+    if (product.store?.whatsapp) {
+      sendWhatsApp(
+        product.store.whatsapp,
+        `Halo! Ada pesanan sewa baru #${booking.code} untuk "${product.name}" (${days} hari, total Rp ${total.toLocaleString("id-ID")}). Silakan periksa dashboard toko kamu di PinjeS.`,
+      ).catch(() => {});
+    }
+
     return booking;
   });
 }
 
+/**
+ * Mengubah booking yang melewati batas bayar menjadi CANCELLED, supaya daftar
+ * pesanan tidak menampilkan "Menunggu pembayaran" untuk pesanan yang sudah mati.
+ * Aman dijalankan berulang dan bersamaan: update bersyarat status + batas waktu.
+ */
+export async function expireOverdueBookings(now: Date = new Date()): Promise<number> {
+  const overdue = await db.booking.findMany({
+    where: { status: { in: EXPIRING_STATUSES }, paymentDueAt: { lt: now } },
+    select: { id: true, code: true, customerId: true },
+    take: 200,
+  });
+
+  let expired = 0;
+  for (const b of overdue) {
+    await db.$transaction(async (tx) => {
+      const res = await tx.booking.updateMany({
+        where: { id: b.id, status: { in: EXPIRING_STATUSES }, paymentDueAt: { lt: now } },
+        data: { status: "CANCELLED", cancelledAt: now, cancelReason: "Batas waktu pembayaran habis." },
+      });
+      if (res.count === 0) return; // sudah berubah oleh request lain
+      expired += 1;
+      await tx.auditLog.create({
+        data: {
+          action: "BOOKING_EXPIRED",
+          entityType: "Booking",
+          entityId: b.id,
+          metadata: JSON.stringify({ code: b.code }),
+        },
+      });
+      await notify(
+        b.customerId,
+        {
+          type: "BOOKING_EXPIRED",
+          title: "Pesanan dibatalkan",
+          body: `Pesanan ${b.code} dibatalkan karena batas waktu pembayaran habis.`,
+          href: `/orders/${b.code}`,
+        },
+        tx,
+      );
+    });
+  }
+  return expired;
+}
+
 export async function getCustomerBookings(user: SessionUser) {
+  await expireOverdueBookings();
   return await db.booking.findMany({
     where: { customerId: user.id },
     orderBy: { createdAt: "desc" },

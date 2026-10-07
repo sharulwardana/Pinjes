@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, ImagePlus, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createProductSchema, type CreateProductInput, PRODUCT_CATEGORIES } from "@/features/products/schemas";
@@ -14,7 +16,7 @@ export default function NewProductPage() {
   const createMut = useCreateProduct();
   const uploadMut = useUploadProductImage();
   const [photos, setPhotos] = useState<string[]>([]);
-  
+
   const {
     register,
     handleSubmit,
@@ -26,20 +28,25 @@ export default function NewProductPage() {
       status: "ACTIVE",
       photos: [],
       stock: 1,
-    }
+      minRentalDays: 1,
+      maxRentalDays: 30,
+      rentalTerms: "",
+    },
   });
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     try {
       const path = await uploadMut.mutateAsync(file);
       const newPhotos = [...photos, path];
       setPhotos(newPhotos);
       setValue("photos", newPhotos, { shouldValidate: true });
     } catch {
-      // error handled by hook
+      // toast handled in hook
+    } finally {
+      e.target.value = "";
     }
   };
 
@@ -55,91 +62,196 @@ export default function NewProductPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Tambah Barang Baru</h1>
-      
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+    <div className="max-w-3xl space-y-8">
+      <div>
+        <Link
+          href="/dashboard/store/products"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition hover:text-ink"
+        >
+          <ArrowLeft className="size-3.5" /> Kembali ke daftar barang
+        </Link>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink md:text-4xl">
+          Tambah Barang Baru
+        </h1>
+        <p className="mt-1 text-sm text-muted">Lengkapi data barang rental yang ingin kamu sewakan.</p>
+      </div>
+
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-6 rounded-4xl border border-line bg-surface p-6 shadow-sm md:p-8"
+        noValidate
+      >
         <div className="space-y-2">
           <Label htmlFor="name">Nama Barang</Label>
-          <Input id="name" placeholder="Contoh: Kamera Canon EOS R6" {...register("name")} disabled={createMut.isPending} />
-          {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+          <Input
+            id="name"
+            placeholder="Contoh: Kamera Sony A7 IV Body Only"
+            {...register("name")}
+            disabled={createMut.isPending}
+          />
+          {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="category">Kategori</Label>
-          <select 
-            id="category" 
-            className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900"
+          <select
+            id="category"
+            className="flex h-11 w-full rounded-full border border-line bg-canvas px-4 py-2 text-sm text-ink capitalize transition focus:border-ink focus:outline-none"
             {...register("category")}
             disabled={createMut.isPending}
           >
             <option value="">-- Pilih Kategori --</option>
-            {PRODUCT_CATEGORIES.map(c => (
-              <option key={c} value={c} className="capitalize">{c}</option>
+            {PRODUCT_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
-          {errors.category && <p className="text-sm text-red-500">{errors.category.message}</p>}
+          {errors.category && <p className="text-xs text-red-600">{errors.category.message}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Deskripsi</Label>
-          <Textarea 
-            id="description" 
-            placeholder="Jelaskan kondisi barang, kelengkapan, dll..." 
-            className="min-h-30"
-            {...register("description")} 
-            disabled={createMut.isPending} 
+          <Label htmlFor="description">Deskripsi Barang</Label>
+          <Textarea
+            id="description"
+            rows={4}
+            placeholder="Jelaskan kondisi barang, kelengkapan unit, aksesori bawaan, dsb..."
+            className="rounded-2xl"
+            {...register("description")}
+            disabled={createMut.isPending}
           />
-          {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
+          {errors.description && <p className="text-xs text-red-600">{errors.description.message}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="space-y-2">
-            <Label htmlFor="pricePerDay">Harga Sewa / Hari (Rp)</Label>
-            <Input id="pricePerDay" type="number" placeholder="50000" {...register("pricePerDay")} disabled={createMut.isPending} />
-            {errors.pricePerDay && <p className="text-sm text-red-500">{errors.pricePerDay.message}</p>}
+            <Label htmlFor="pricePerDay">Tarif Sewa / Hari (Rp)</Label>
+            <Input
+              id="pricePerDay"
+              type="number"
+              placeholder="75000"
+              {...register("pricePerDay")}
+              disabled={createMut.isPending}
+            />
+            {errors.pricePerDay && <p className="text-xs text-red-600">{errors.pricePerDay.message}</p>}
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="deposit">Deposit Jaminan (Rp)</Label>
-            <Input id="deposit" type="number" placeholder="0" {...register("deposit")} disabled={createMut.isPending} />
-            {errors.deposit && <p className="text-sm text-red-500">{errors.deposit.message}</p>}
+            <Label htmlFor="deposit">Uang Jaminan (Rp)</Label>
+            <Input
+              id="deposit"
+              type="number"
+              placeholder="0"
+              {...register("deposit")}
+              disabled={createMut.isPending}
+            />
+            {errors.deposit && <p className="text-xs text-red-600">{errors.deposit.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="stock">Stok Unit Tersedia</Label>
+            <Input
+              id="stock"
+              type="number"
+              placeholder="1"
+              {...register("stock")}
+              disabled={createMut.isPending}
+            />
+            {errors.stock && <p className="text-xs text-red-600">{errors.stock.message}</p>}
           </div>
         </div>
-        
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="minRentalDays">Minimal Hari Sewa</Label>
+            <Input
+              id="minRentalDays"
+              type="number"
+              min={1}
+              placeholder="1"
+              {...register("minRentalDays")}
+              disabled={createMut.isPending}
+            />
+            {errors.minRentalDays && <p className="text-xs text-red-600">{errors.minRentalDays.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="maxRentalDays">Maksimal Hari Sewa</Label>
+            <Input
+              id="maxRentalDays"
+              type="number"
+              min={1}
+              placeholder="30"
+              {...register("maxRentalDays")}
+              disabled={createMut.isPending}
+            />
+            {errors.maxRentalDays && <p className="text-xs text-red-600">{errors.maxRentalDays.message}</p>}
+          </div>
+        </div>
+
         <div className="space-y-2">
-          <Label htmlFor="stock">Stok Tersedia</Label>
-          <Input id="stock" type="number" placeholder="1" {...register("stock")} disabled={createMut.isPending} />
-          {errors.stock && <p className="text-sm text-red-500">{errors.stock.message}</p>}
+          <Label htmlFor="rentalTerms">Syarat & Ketentuan Sewa (Opsional)</Label>
+          <Textarea
+            id="rentalTerms"
+            rows={3}
+            placeholder="Contoh: Wajib meninggalkan e-KTP asli saat pengambilan barang, denda keterlambatan Rp 50.000/hari..."
+            className="rounded-2xl"
+            {...register("rentalTerms")}
+            disabled={createMut.isPending}
+          />
+          {errors.rentalTerms && <p className="text-xs text-red-600">{errors.rentalTerms.message}</p>}
         </div>
 
-        <div className="space-y-4 pt-4 border-t border-zinc-100">
-          <Label>Foto Barang (Min 1, Maks 5)</Label>
-          
-          <div className="flex flex-wrap gap-4">
+        <div className="space-y-3 border-t border-line pt-6">
+          <div className="flex items-center justify-between">
+            <Label>Foto Barang (Min 1, Maks 5)</Label>
+            <span className="text-xs text-muted">{photos.length}/5 foto</span>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
             {photos.map((photo, i) => (
-              <div key={i} className="relative h-24 w-24 rounded-md border border-zinc-200 overflow-hidden group">
-                <img src={`/api/files/${photo}`} alt="" className="h-full w-full object-cover" />
-                <button 
-                  type="button" 
-                  className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+              <div
+                key={photo}
+                className="group relative size-24 overflow-hidden rounded-2xl border border-line bg-canvas shadow-xs"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/api/files/${photo}`} alt="" className="size-full object-cover" />
+                <button
+                  type="button"
+                  aria-label="Hapus foto"
+                  className="absolute inset-0 flex items-center justify-center bg-ink/60 text-canvas opacity-0 transition group-hover:opacity-100"
                   onClick={() => removePhoto(i)}
                 >
-                  Hapus
+                  <X className="size-5" />
                 </button>
               </div>
             ))}
+
             {photos.length < 5 && (
-              <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50 transition-colors">
-                <div className="text-zinc-500 font-medium text-2xl">+</div>
-                <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploadMut.isPending || createMut.isPending} />
+              <label className="flex size-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-line bg-canvas text-muted transition hover:border-ink hover:text-ink">
+                <ImagePlus className="size-6" />
+                <span className="text-[0.6875rem] font-semibold">Upload</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleUpload}
+                  disabled={uploadMut.isPending || createMut.isPending}
+                />
               </label>
             )}
           </div>
-          {errors.photos && <p className="text-sm text-red-500">{errors.photos.message}</p>}
+          {errors.photos && <p className="text-xs text-red-600">{errors.photos.message}</p>}
         </div>
 
-        <div className="pt-4 border-t border-zinc-100">
-          <Button type="submit" size="lg" className="w-full" disabled={createMut.isPending || uploadMut.isPending}>
+        <div className="border-t border-line pt-6">
+          <Button
+            type="submit"
+            size="lg"
+            variant="signal"
+            className="h-12 w-full text-base font-bold text-ink"
+            disabled={createMut.isPending || uploadMut.isPending}
+          >
             {createMut.isPending ? "Menyimpan..." : "Simpan Barang"}
           </Button>
         </div>

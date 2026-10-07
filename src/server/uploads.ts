@@ -1,9 +1,9 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, unlink, writeFile, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { env } from "./env";
 import { ValidationError } from "./errors";
+import { getStorage } from "./storage";
 
 /**
  * Upload kinds. Public kinds are served to anyone; private kinds go through an
@@ -89,12 +89,11 @@ export async function saveUpload(file: unknown, kind: UploadKind, field = "file"
   }
 
   const name = `${randomUUID()}.${sniffed}`;
-  const dir = path.join(env.uploadDir, kind);
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), buf, { flag: "wx" });
+  const relativePath = `${kind}/${name}`;
+  await getStorage().save(relativePath, buf, MIME[sniffed]);
 
   return {
-    path: `${kind}/${name}`,
+    path: relativePath,
     mimeType: MIME[sniffed],
     sizeBytes: buf.length,
     sha256: createHash("sha256").update(buf).digest("hex"),
@@ -114,8 +113,9 @@ export async function readUpload(relative: string) {
   const resolved = resolveUploadPath(relative);
   if (!resolved) return null;
   try {
-    const [buf, info] = await Promise.all([readFile(resolved.abs), stat(resolved.abs)]);
-    return { buf, mimeType: MIME[resolved.type], kind: resolved.kind, mtime: info.mtime };
+    const file = await getStorage().read(relative, MIME[resolved.type]);
+    if (!file) return null;
+    return { buf: file.buf, mimeType: file.mimeType, kind: resolved.kind, mtime: file.mtime };
   } catch {
     return null;
   }
@@ -125,5 +125,5 @@ export async function deleteUpload(relative: string | null | undefined) {
   if (!relative) return;
   const resolved = resolveUploadPath(relative);
   if (!resolved) return;
-  await unlink(resolved.abs).catch(() => {});
+  await getStorage().delete(relative);
 }

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { ProductCard } from "@/components/product-card";
 import { FilterDrawer } from "@/components/filter-drawer";
 import { Button } from "@/components/ui/button";
+import { CategoryPills } from "@/components/category-pills";
 
 export const metadata: Metadata = { title: "Jelajahi Barang | PinjeS" };
 
@@ -42,9 +43,6 @@ function buildHref(base: Record<string, string | undefined>, overrides: Record<s
 
 const fieldClass =
   "h-12 w-full rounded-2xl border border-line bg-surface px-4 text-base text-ink placeholder:text-muted/70 transition focus:border-ink focus:outline-none focus:ring-4 focus:ring-signal/50";
-
-const chipBase =
-  "inline-flex h-11 shrink-0 items-center rounded-full px-5 text-sm font-semibold transition duration-300 active:scale-95";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Params> }) {
   const p = await searchParams;
@@ -206,35 +204,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {/* Hasil */}
         <main className="min-w-0">
           <div className="space-y-4">
-            {/* Kategori: chip yang bisa digeser */}
+            {/* Kategori: chip dengan layout animation sliding indicator */}
             {categories.length > 0 && (
-              <nav aria-label="Kategori" className="hide-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
-                <Link
-                  href={link({ category: undefined, page: undefined })}
-                  aria-current={!activeCategory ? "true" : undefined}
-                  className={cn(
-                    chipBase,
-                    !activeCategory ? "bg-ink text-canvas" : "bg-surface text-ink ring-1 ring-line hover:ring-ink",
-                  )}
-                >
-                  Semua
-                </Link>
-                {categories.map((c) => (
-                  <Link
-                    key={c.id}
-                    href={link({ category: c.slug, page: undefined })}
-                    aria-current={activeCategory?.id === c.id ? "true" : undefined}
-                    className={cn(
-                      chipBase,
-                      activeCategory?.id === c.id
-                        ? "bg-ink text-canvas"
-                        : "bg-surface text-ink ring-1 ring-line hover:ring-ink",
-                    )}
-                  >
-                    {c.name}
-                  </Link>
-                ))}
-              </nav>
+              <CategoryPills
+                activeSlug={activeCategory?.slug}
+                items={[
+                  { id: "all", name: "Semua", href: link({ category: undefined, page: undefined }) },
+                  ...categories.map((c) => ({
+                    id: c.id,
+                    name: c.name,
+                    slug: c.slug,
+                    href: link({ category: c.slug, page: undefined }),
+                  })),
+                ]}
+              />
             )}
 
             {/* Urutan */}
@@ -283,7 +266,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
           <div className="mt-6 md:mt-8">
             {result.items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-line bg-surface/60 px-5 py-20 text-center">
+              <div className="flex flex-col items-center justify-center rounded-4xl border border-dashed border-line bg-surface/60 px-5 py-20 text-center">
                 <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
                   <SearchX className="size-7" aria-hidden />
                 </span>
@@ -302,7 +285,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               </div>
             ) : (
               <>
-                <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,16.5rem),1fr))] md:gap-6">
+                <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,16.5rem),1fr))] md:gap-6">
                   {result.items.map((product, i) => (
                     <ProductCard key={product.id} product={product} priority={i < 2} />
                   ))}

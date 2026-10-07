@@ -65,7 +65,7 @@ export async function seed() {
 
   // 1. Admin
   await db.user.create({
-    data: { name: "Admin", email: "admin@rentspace.id", passwordHash: await hash("admin123"), roleKey: "ADMIN" }
+    data: { name: "Admin", email: "admin@pinjes.local", passwordHash: await hash("admin123"), roleKey: "ADMIN" }
   });
 
   // 2. Customer

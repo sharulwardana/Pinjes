@@ -102,7 +102,7 @@ export default async function Home() {
                 <span className="relative isolate inline-block">
                   <span
                     aria-hidden
-                    className="absolute -inset-x-[0.08em] bottom-[0.04em] top-[0.5em] -z-10 -rotate-1 rounded-[0.2em] bg-signal"
+                    className="absolute inset-x-[-0.08em] bottom-[0.04em] top-[0.5em] -z-10 -rotate-1 rounded-[0.2em] bg-signal"
                   />
                   sebentar
                 </span>{" "}
@@ -230,7 +230,7 @@ export default async function Home() {
       {/* ── Cara kerja ───────────────────────────────────────── */}
       <section className="py-6 md:py-12">
         <div className="shell">
-          <div className="rounded-[2rem] bg-ink px-6 py-14 text-canvas md:rounded-[3rem] md:px-14 md:py-20">
+          <div className="rounded-4xl bg-ink px-6 py-14 text-canvas md:rounded-[3rem] md:px-14 md:py-20">
             <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
               <Reveal>
                 <p className="text-eyebrow text-signal">Cara menyewa</p>
@@ -267,7 +267,7 @@ export default async function Home() {
       <section className="py-6 md:py-12">
         <div className="shell">
           <Reveal>
-            <div className="relative overflow-hidden rounded-[2rem] bg-signal px-6 py-14 text-ink md:rounded-[3rem] md:px-14 md:py-20">
+            <div className="relative overflow-hidden rounded-4xl bg-signal px-6 py-14 text-ink md:rounded-[3rem] md:px-14 md:py-20">
               <div className="relative flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-end">
                 <div className="max-w-2xl">
                   <h2 className="text-title">Punya toko rental? Biar barangmu ketemu penyewanya.</h2>

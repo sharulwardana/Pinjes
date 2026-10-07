@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "../db";
 import { AppError } from "../errors";
 import type { SessionUser } from "./auth";
+import { sendWhatsApp } from "../notifications";
 
 // Waktu tambahan bagi pelanggan untuk mengunggah ulang bukti yang ditolak.
 const REUPLOAD_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -11,7 +12,11 @@ export async function confirmPayment(user: SessionUser, bookingId: string) {
     return await db.$transaction(async (tx) => {
         const booking = await tx.booking.findUnique({
             where: { id: bookingId },
-            include: { payment: true, store: { select: { ownerId: true } } },
+            include: {
+                payment: true,
+                store: { select: { ownerId: true } },
+                customer: { select: { phone: true, email: true } },
+            },
         });
 
         if (!booking) throw new AppError("Pesanan tidak ditemukan.", 404);
@@ -89,6 +94,13 @@ export async function confirmPayment(user: SessionUser, bookingId: string) {
                 href: `/orders/${booking.code}`,
             },
         });
+
+        if (booking.customer?.phone) {
+            sendWhatsApp(
+                booking.customer.phone,
+                `Halo! Pembayaran untuk pesanan sewa ${booking.code} sudah dikonfirmasi toko. Pantau status pengambilan barang di akun PinjeS kamu.`,
+            ).catch(() => {});
+        }
 
         return true;
     });

@@ -56,7 +56,7 @@ export function useUploadProductImage() {
       const fd = new FormData();
       fd.append("kind", "product");
       fd.append("file", file);
-      
+
       const res = await fetch("/api/files/upload", {
         method: "POST",
         body: fd,
@@ -67,6 +67,58 @@ export function useUploadProductImage() {
     },
     onError: (err: any) => {
       toast.error(err.message || "Gagal upload gambar");
+    },
+  });
+}
+
+export function useStoreProduct(id: string) {
+  return useQuery({
+    queryKey: ["store", "products", id],
+    queryFn: () => fetchApi<any>(`/api/store/products/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useUpdateProduct() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CreateProductInput }) =>
+      fetchApi(`/api/store/products/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      toast.success("Barang berhasil diperbarui");
+      queryClient.invalidateQueries({ queryKey: ["store", "products"] });
+      queryClient.invalidateQueries({ queryKey: ["store", "products", variables.id] });
+      router.push("/dashboard/store/products");
+      router.refresh();
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Gagal memperbarui barang");
+    },
+  });
+}
+
+export function useDeleteProduct() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetchApi(`/api/store/products/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      toast.success("Barang berhasil dinonaktifkan");
+      queryClient.invalidateQueries({ queryKey: ["store", "products"] });
+      router.push("/dashboard/store/products");
+      router.refresh();
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Gagal menonaktifkan barang");
     },
   });
 }

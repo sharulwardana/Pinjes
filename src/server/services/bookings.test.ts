@@ -30,7 +30,7 @@ describe("createBooking: harga dan biaya", () => {
         expect(booking.total).toBe(250_000); // 200.000 + jaminan 50.000
         expect(booking.platformFee).toBe(5_000);
         expect(booking.status).toBe("PENDING_PAYMENT");
-        expect(booking.code).toMatch(/^RS-/);
+        expect(booking.code).toMatch(/^PJ-/);
 
         const payment = await db.payment.findUnique({ where: { bookingId: booking.id } });
         expect(payment?.amount).toBe(250_000);
